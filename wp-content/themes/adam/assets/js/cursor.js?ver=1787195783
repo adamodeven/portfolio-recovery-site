@@ -1,0 +1,89 @@
+// Minimal custom cursor: filled dot -> outline ring on clickable, vertical bar on text.
+(() => {
+  const supportsCustomCursor = window.matchMedia
+    ? window.matchMedia("(hover: hover) and (pointer: fine)").matches
+    : false;
+  const prefersReducedMotion = window.matchMedia
+    ? window.matchMedia("(prefers-reduced-motion: reduce)").matches
+    : false;
+
+  if (!supportsCustomCursor || prefersReducedMotion) {
+    return;
+  }
+
+  const CLICKABLE_SELECTOR =
+    'a, button, [role="button"], input[type="submit"], input[type="button"], ' +
+    'input[type="checkbox"], input[type="radio"], select, label, summary, [onclick]';
+  const TEXT_SELECTOR =
+    "p, span, h1, h2, h3, h4, h5, h6, li, blockquote, td, th, dt, dd, figcaption, " +
+    'input[type="text"], input[type="email"], input[type="search"], textarea, [contenteditable]';
+
+  document.documentElement.classList.add("custom-cursor-active");
+
+  const cursor = document.createElement("div");
+  cursor.className = "cursor";
+  cursor.setAttribute("aria-hidden", "true");
+  cursor.innerHTML = '<div class="cursor__inner"></div>';
+  document.body.appendChild(cursor);
+
+  let currentState = "default";
+  const setState = (state) => {
+    if (state === currentState) {
+      return;
+    }
+    cursor.classList.remove("cursor--link", "cursor--text");
+    if (state !== "default") {
+      cursor.classList.add(`cursor--${state}`);
+    }
+    currentState = state;
+  };
+
+  let visible = false;
+  const showCursor = () => {
+    if (!visible) {
+      visible = true;
+      cursor.classList.add("cursor--visible");
+    }
+  };
+  const hideCursor = () => {
+    if (visible) {
+      visible = false;
+      cursor.classList.remove("cursor--visible");
+    }
+  };
+
+  window.addEventListener(
+    "mousemove",
+    (event) => {
+      showCursor();
+      cursor.style.transform = `translate3d(${event.clientX}px, ${event.clientY}px, 0)`;
+
+      const target = event.target;
+      if (target && target.closest) {
+        if (target.closest(CLICKABLE_SELECTOR)) {
+          setState("link");
+        } else if (target.closest(TEXT_SELECTOR)) {
+          setState("text");
+        } else {
+          setState("default");
+        }
+      }
+    },
+    { passive: true }
+  );
+
+  document.addEventListener("mouseleave", hideCursor);
+  document.addEventListener("mouseenter", showCursor);
+  window.addEventListener("blur", hideCursor);
+
+  window.addEventListener(
+    "mousedown",
+    () => cursor.classList.add("cursor--pressed"),
+    { passive: true }
+  );
+  window.addEventListener(
+    "mouseup",
+    () => cursor.classList.remove("cursor--pressed"),
+    { passive: true }
+  );
+})();

@@ -1,0 +1,470 @@
+// Resume page: education/experience hover states, skill connector lines, and
+// the rotating globe. Only runs on the resume page template.
+(function () {
+  "use strict";
+
+  var page = document.querySelector(".resume-page");
+  if (!page) {
+    return;
+  }
+
+  document.addEventListener("DOMContentLoaded", init);
+
+  function init() {
+    var eduRows = Array.prototype.slice.call(document.querySelectorAll("[data-resume-edu-row]"));
+    var expRows = Array.prototype.slice.call(document.querySelectorAll("[data-resume-exp-row]"));
+    var skillEls = Array.prototype.slice.call(document.querySelectorAll("[data-resume-skill]"));
+    var wrap = document.querySelector("[data-resume-exp-wrap]");
+    var svg = document.querySelector("[data-resume-exp-lines]");
+    var canvas = document.querySelector("[data-resume-globe]");
+    var globeSlot = document.querySelector("[data-resume-globe-slot]");
+    var eduSection = document.querySelector("[data-resume-education]");
+
+    // Below this width there's no real hover: skip the dimming/connector/
+    // expand-on-hover choreography entirely (CSS shows everything plainly
+    // instead) rather than leaving half-working hover behavior on touch.
+    var mobileMQ = window.matchMedia ? window.matchMedia("(max-width: 900px)") : null;
+    function isMobile() {
+      return !!(mobileMQ && mobileMQ.matches);
+    }
+
+    var expDetails = expRows.map(function (row) {
+      return row.querySelector("[data-resume-exp-detail]");
+    });
+    var expDates = expRows.map(function (row) {
+      return row.querySelector("[data-resume-exp-dates]");
+    });
+    var expSkillIndices = expRows.map(function (row) {
+      var raw = row.getAttribute("data-skills") || "";
+      return raw
+        .split(",")
+        .filter(function (v) { return v !== ""; })
+        .map(Number);
+    });
+
+    var hoverEdu = null;
+    var hoverExp = null;
+    var hoverSkill = null;
+
+    function applyHoverState() {
+      if (isMobile()) {
+        return;
+      }
+
+      eduRows.forEach(function (row, i) {
+        row.style.opacity = hoverEdu == null || hoverEdu === i ? "1" : "0.35";
+      });
+
+      var activeSkills = hoverExp != null ? expSkillIndices[hoverExp] : null;
+
+      expRows.forEach(function (row, i) {
+        row.style.opacity = hoverExp == null || hoverExp === i ? "1" : "0.4";
+        var detail = expDetails[i];
+        if (detail) {
+          var open = hoverExp === i;
+          detail.style.maxHeight = open ? detail.scrollHeight + "px" : "0px";
+          detail.style.opacity = open ? "1" : "0";
+        }
+      });
+
+      skillEls.forEach(function (el, i) {
+        if (activeSkills) {
+          el.style.opacity = activeSkills.indexOf(i) !== -1 ? "1" : "0.25";
+        } else {
+          el.style.opacity = hoverSkill == null || hoverSkill === i ? "1" : "0.35";
+        }
+      });
+
+      updateLineOpacity();
+    }
+
+    eduRows.forEach(function (row, i) {
+      row.addEventListener("mouseenter", function () { if (isMobile()) { return; } hoverEdu = i; applyHoverState(); });
+      row.addEventListener("mouseleave", function () { if (isMobile()) { return; } hoverEdu = null; applyHoverState(); });
+    });
+
+    expRows.forEach(function (row, i) {
+      row.addEventListener("mouseenter", function () { if (isMobile()) { return; } hoverExp = i; applyHoverState(); });
+      row.addEventListener("mouseleave", function () { if (isMobile()) { return; } hoverExp = null; applyHoverState(); });
+    });
+
+    skillEls.forEach(function (el, i) {
+      el.addEventListener("mouseenter", function () { if (isMobile()) { return; } hoverSkill = i; applyHoverState(); });
+      el.addEventListener("mouseleave", function () { if (isMobile()) { return; } hoverSkill = null; applyHoverState(); });
+    });
+
+    // --- Connector lines between experience rows and the skills column ---
+
+    var geoKey = "";
+
+    function measureAndRenderLines() {
+      if (!wrap || !svg || !skillEls.length || isMobile()) {
+        return;
+      }
+      var wr = wrap.getBoundingClientRect();
+      var paths = [];
+
+      expRows.forEach(function (row, e) {
+        var idxs = expSkillIndices[e] || [];
+        if (!idxs.length) {
+          return;
+        }
+        var er = row.getBoundingClientRect();
+        var x1 = er.right - wr.left + 12;
+        var dateEl = expDates[e];
+        var dr = dateEl ? dateEl.getBoundingClientRect() : er;
+        var y1 = dateEl ? dr.top + dr.height / 2 - wr.top : dr.top - wr.top + 22;
+
+        idxs.forEach(function (s) {
+          var sn = skillEls[s];
+          if (!sn) {
+            return;
+          }
+          var sr = sn.getBoundingClientRect();
+          var x2 = sr.left - wr.left - 12;
+          var y2 = sr.top - wr.top + sr.height / 2;
+          if (x2 - x1 < 24) {
+            return;
+          }
+          var dx = (x2 - x1) * 0.45;
+          paths.push({
+            e: e,
+            s: s,
+            d: "M " + x1 + " " + y1 + " C " + (x1 + dx) + " " + y1 + ", " + (x2 - dx) + " " + y2 + ", " + x2 + " " + y2,
+          });
+        });
+      });
+
+      var key = paths.map(function (p) { return p.d; }).join("|");
+      if (key === geoKey) {
+        updateLineOpacity();
+        return;
+      }
+      geoKey = key;
+
+      while (svg.firstChild) {
+        svg.removeChild(svg.firstChild);
+      }
+      paths.forEach(function (p) {
+        var path = document.createElementNS("http://www.w3.org/2000/svg", "path");
+        path.setAttribute("d", p.d);
+        path.setAttribute("fill", "none");
+        path.setAttribute("stroke", "currentColor");
+        path.dataset.e = p.e;
+        path.dataset.s = p.s;
+        path.style.transition = "opacity 180ms ease, stroke-width 180ms ease";
+        svg.appendChild(path);
+      });
+      updateLineOpacity();
+    }
+
+    function updateLineOpacity() {
+      if (!svg) {
+        return;
+      }
+      var paths = svg.querySelectorAll("path");
+      for (var i = 0; i < paths.length; i++) {
+        var path = paths[i];
+        var e = Number(path.dataset.e);
+        var s = Number(path.dataset.s);
+        var on = hoverExp === e || hoverSkill === s;
+        var dim = (hoverExp != null || hoverSkill != null) && !on;
+        path.setAttribute("stroke-width", on ? "1.2" : "1");
+        path.style.opacity = on ? "0.85" : dim ? "0.06" : "0.2";
+      }
+    }
+
+    if (wrap && "ResizeObserver" in window) {
+      var ro = new ResizeObserver(function () { measureAndRenderLines(); });
+      ro.observe(wrap);
+    }
+    window.addEventListener("resize", measureAndRenderLines);
+
+    // --- Globe ---
+
+    var globeActive = canvas && globeSlot && eduRows.length;
+    var prefersReducedMotion = window.matchMedia
+      ? window.matchMedia("(prefers-reduced-motion: reduce)").matches
+      : false;
+
+    var marks = [];
+    eduRows.forEach(function (row, i) {
+      var lat = row.getAttribute("data-lat");
+      var lon = row.getAttribute("data-lon");
+      if (lat === null || lon === null) {
+        return;
+      }
+      marks.push({
+        kind: "edu",
+        idx: i,
+        place: row.getAttribute("data-place") || "",
+        lat: parseFloat(lat),
+        lon: parseFloat(lon),
+      });
+    });
+    expRows.forEach(function (row, i) {
+      var lat = row.getAttribute("data-lat");
+      var lon = row.getAttribute("data-lon");
+      if (lat === null || lon === null) {
+        return;
+      }
+      marks.push({
+        kind: "exp",
+        idx: i,
+        place: row.getAttribute("data-place") || "",
+        lat: parseFloat(lat),
+        lon: parseFloat(lon),
+      });
+    });
+
+    var land = null;
+    var docked = false;
+    var gx = null, gy = null, gs = null;
+    var animating = false, wasDocked = false;
+    var lon = -84.4, lat = 24, targetLon = -84.4, targetLat = 24;
+    var raf = null;
+
+    if (globeActive) {
+      if (eduSection && "IntersectionObserver" in window) {
+        // Dock once the education section's bottom edge scrolls past this
+        // fraction of the viewport height (from the top), rather than
+        // waiting for the section to nearly clear the screen entirely.
+        var io = new IntersectionObserver(
+          function (entries) { docked = !entries[0].isIntersecting; },
+          { rootMargin: "-45% 0px 0px 0px", threshold: 0 }
+        );
+        io.observe(eduSection);
+      }
+
+      fetch("https://cdn.jsdelivr.net/npm/world-atlas@2/land-110m.json")
+        .then(function (res) { return res.json(); })
+        .then(function (t) {
+          var sx = t.transform.scale[0], sy = t.transform.scale[1];
+          var tx = t.transform.translate[0], ty = t.transform.translate[1];
+          var arcs = t.arcs.map(function (arc) {
+            var x = 0, y = 0;
+            return arc.map(function (d) {
+              x += d[0];
+              y += d[1];
+              return [x * sx + tx, y * sy + ty];
+            });
+          });
+          var rings = [];
+          function addRing(idxs) {
+            var pts = [];
+            idxs.forEach(function (i) {
+              var a = i >= 0 ? arcs[i] : arcs[~i].slice().reverse();
+              a.forEach(function (p, k) {
+                if (k || !pts.length) {
+                  pts.push(p);
+                }
+              });
+            });
+            if (pts.length > 2) {
+              rings.push(pts);
+            }
+          }
+          var geom = t.objects.land;
+          var geoms = geom.type === "GeometryCollection" ? geom.geometries : [geom];
+          geoms.forEach(function (g) {
+            var polys = g.type === "MultiPolygon" ? g.arcs : [g.arcs];
+            polys.forEach(function (poly) { poly.forEach(addRing); });
+          });
+          land = rings;
+        })
+        .catch(function () { land = null; });
+
+      function layoutGlobe() {
+        var PAD = 110;
+        var tx, ty, ts;
+        if (docked) {
+          ts = 170;
+          tx = window.innerWidth - 28 - ts;
+          ty = window.innerHeight - 28 - ts;
+        } else {
+          var r = globeSlot.getBoundingClientRect();
+          ts = 340;
+          tx = r.left;
+          ty = r.top;
+        }
+        if (gx == null) {
+          gx = tx;
+          gy = ty;
+          gs = ts;
+        }
+        if (docked !== wasDocked) {
+          animating = true;
+          wasDocked = docked;
+        }
+        if (animating) {
+          gx += (tx - gx) * 0.14;
+          gy += (ty - gy) * 0.14;
+          gs += (ts - gs) * 0.14;
+          if (Math.abs(tx - gx) < 0.6 && Math.abs(ty - gy) < 0.6 && Math.abs(ts - gs) < 0.6) {
+            animating = false;
+          }
+        } else {
+          gx = tx;
+          gy = ty;
+          gs = ts;
+        }
+        var box = Math.round(gs) + PAD * 2;
+        canvas.style.left = Math.round(gx - PAD) + "px";
+        canvas.style.top = Math.round(gy - PAD) + "px";
+        canvas.style.width = box + "px";
+        canvas.style.height = box + "px";
+      }
+
+      function drawGlobe() {
+        var dpr = window.devicePixelRatio || 1;
+        var size = Math.round(gs || 340);
+        var box = size + 220;
+        if (canvas.width !== Math.round(box * dpr)) {
+          canvas.width = Math.round(box * dpr);
+          canvas.height = Math.round(box * dpr);
+        }
+        var ctx = canvas.getContext("2d");
+        ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+        ctx.clearRect(0, 0, box, box);
+
+        var focus = null;
+        if (hoverEdu != null) {
+          focus = marks.filter(function (m) { return m.kind === "edu" && m.idx === hoverEdu; })[0] || null;
+        } else if (hoverExp != null) {
+          focus = marks.filter(function (m) { return m.kind === "exp" && m.idx === hoverExp; })[0] || null;
+        }
+
+        if (focus) {
+          targetLon = focus.lon;
+          targetLat = focus.lat * 0.75;
+        } else if (!prefersReducedMotion) {
+          targetLon += 0.035;
+          targetLat += (18 - targetLat) * 0.03;
+        }
+        var d = ((targetLon - lon + 540) % 360) - 180;
+        lon += d * 0.07;
+        lat += (targetLat - lat) * 0.07;
+
+        var cs = getComputedStyle(document.documentElement);
+        var text = (cs.getPropertyValue("--color-text") || "#111").trim();
+        var R = size / 2 - (size > 250 ? 12 : 4);
+        var cx = box / 2;
+        var cy = box / 2;
+        var p0 = (lat * Math.PI) / 180;
+
+        function proj(plat, plon) {
+          var ph = (plat * Math.PI) / 180;
+          var la = ((plon - lon) * Math.PI) / 180;
+          var cosc = Math.sin(p0) * Math.sin(ph) + Math.cos(p0) * Math.cos(ph) * Math.cos(la);
+          return {
+            x: cx + R * Math.cos(ph) * Math.sin(la),
+            y: cy - R * (Math.cos(p0) * Math.sin(ph) - Math.sin(p0) * Math.cos(ph) * Math.cos(la)),
+            v: cosc > 0,
+          };
+        }
+
+        ctx.strokeStyle = text;
+        ctx.globalAlpha = 0.35;
+        ctx.lineWidth = 1;
+        ctx.beginPath();
+        ctx.arc(cx, cy, R, 0, Math.PI * 2);
+        ctx.stroke();
+
+        ctx.globalAlpha = 0.16;
+        ctx.lineWidth = 0.7;
+
+        function drawPath(pts) {
+          var started = false;
+          ctx.beginPath();
+          pts.forEach(function (p) {
+            if (!p.v) {
+              started = false;
+              return;
+            }
+            if (started) {
+              ctx.lineTo(p.x, p.y);
+            } else {
+              ctx.moveTo(p.x, p.y);
+              started = true;
+            }
+          });
+          ctx.stroke();
+        }
+
+        for (var lo = -180; lo < 180; lo += 20) {
+          var pts1 = [];
+          for (var la2 = -90; la2 <= 90; la2 += 3) {
+            pts1.push(proj(la2, lo));
+          }
+          drawPath(pts1);
+        }
+        for (var la3 = -60; la3 <= 60; la3 += 20) {
+          var pts2 = [];
+          for (var lo2 = -180; lo2 <= 180; lo2 += 3) {
+            pts2.push(proj(la3, lo2));
+          }
+          drawPath(pts2);
+        }
+
+        if (land) {
+          ctx.globalAlpha = 0.55;
+          ctx.lineWidth = size > 250 ? 0.9 : 0.7;
+          land.forEach(function (ring) {
+            drawPath(ring.map(function (p) { return proj(p[1], p[0]); }));
+          });
+        }
+
+        var PIN = "#d93a2b";
+        var drawn = {};
+        marks.forEach(function (m) {
+          var key = String(m.place).trim();
+          var active = (m.kind === "edu" && hoverEdu === m.idx) || (m.kind === "exp" && hoverExp === m.idx);
+          if (drawn[key] && !active) {
+            return;
+          }
+          drawn[key] = true;
+          var p = proj(m.lat, m.lon);
+          if (!p.v) {
+            return;
+          }
+          ctx.globalAlpha = active ? 1 : 0.55;
+          ctx.fillStyle = PIN;
+          ctx.strokeStyle = PIN;
+          ctx.lineWidth = 1.2;
+          ctx.beginPath();
+          ctx.arc(p.x, p.y, active ? 4 : 2.5, 0, Math.PI * 2);
+          if (active) {
+            ctx.fill();
+          } else {
+            ctx.stroke();
+          }
+          ctx.globalAlpha = active ? 1 : 0.32;
+          ctx.fillStyle = text;
+          var fs = size > 250 ? 12 : 9;
+          ctx.font = fs + "px system-ui, -apple-system, sans-serif";
+          var label = key;
+          var off = size > 250 ? 10 : 7;
+          var tw = ctx.measureText(label).width;
+          var flip = p.x + off + tw > box - 6;
+          ctx.fillText(label, flip ? p.x - off - tw : p.x + off, p.y + fs / 3);
+        });
+        ctx.globalAlpha = 1;
+      }
+
+      function step() {
+        if (!isMobile()) {
+          layoutGlobe();
+          drawGlobe();
+        }
+        measureAndRenderLines();
+        raf = requestAnimationFrame(step);
+      }
+      step();
+    } else if (wrap && svg && skillEls.length) {
+      (function loop() {
+        measureAndRenderLines();
+        raf = requestAnimationFrame(loop);
+      })();
+    }
+  }
+})();
