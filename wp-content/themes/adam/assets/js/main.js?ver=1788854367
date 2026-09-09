@@ -153,6 +153,8 @@ document.addEventListener("DOMContentLoaded", () => {
   let navFallbackTimeout = null;
   const previewCache = new Map();
   const screenshotCache = new Map();
+  const navScreenshotSize = [360, 225];
+  const contentScreenshotSize = [280, 175];
   let navScreenshotToken = 0;
   const isSafari = (() => {
     const ua = navigator.userAgent || "";
@@ -220,13 +222,15 @@ document.addEventListener("DOMContentLoaded", () => {
       screenshotCache.set(cacheKey, fallback);
       return fallback;
     }
-    if (isSafari) {
-      const request = Promise.resolve(requestUrl);
-      screenshotCache.set(cacheKey, request);
-      const preload = new Image();
-      preload.src = requestUrl;
-      return request;
-    }
+    const preloadImage = (src) => new Promise((resolve, reject) => {
+      const image = new Image();
+      image.onload = () => {
+        const decoded = image.decode ? image.decode() : Promise.resolve();
+        decoded.catch(() => {}).then(() => resolve(src));
+      };
+      image.onerror = () => reject(new Error("Screenshot image failed to load."));
+      image.src = src;
+    });
     const fetchScreenshot = () =>
       fetch(requestUrl, { credentials: "same-origin" })
         .then((res) => {
@@ -243,11 +247,16 @@ document.addEventListener("DOMContentLoaded", () => {
           if (!blob.size) {
             throw new Error("Empty screenshot response.");
           }
-          return URL.createObjectURL(blob);
+          const blobUrl = URL.createObjectURL(blob);
+          return preloadImage(blobUrl).catch((err) => {
+            URL.revokeObjectURL(blobUrl);
+            throw err;
+          });
         });
 
-    const request = fetchScreenshot()
-      .catch(() => fetchScreenshot())
+    const loadScreenshot = isSafari ? () => preloadImage(requestUrl) : fetchScreenshot;
+    const request = loadScreenshot()
+      .catch(() => loadScreenshot())
       .catch((err) => {
         screenshotCache.delete(cacheKey);
         throw err;
@@ -376,7 +385,7 @@ document.addEventListener("DOMContentLoaded", () => {
     navPreview.innerHTML = `
       <div class="nav-preview__frame">
         <iframe class="nav-preview__iframe" title="Page preview" loading="lazy"></iframe>
-        <img class="nav-preview__image" alt="" loading="lazy">
+        <img class="nav-preview__image" alt="">
         <div class="link-preview-card nav-preview__card" aria-hidden="true">
           <div class="link-preview-card__text">
             <p class="link-preview-card__title"></p>
@@ -464,7 +473,7 @@ document.addEventListener("DOMContentLoaded", () => {
           ? `${themeUrl}/assets/img/linkedinhover.png`
           : "/wp-content/themes/adambasic/assets/img/linkedinhover.png";
         navPreview.classList.add("nav-preview--image", "nav-preview--screenshot");
-        navPreview.classList.remove("nav-preview--loading");
+        navPreview.classList.remove("nav-preview--loading", "nav-preview--fallback");
       } else {
       const currentToken = ++navScreenshotToken;
       const isCurrent = () => currentToken === navScreenshotToken && activeNavLink === link;
@@ -495,9 +504,9 @@ document.addEventListener("DOMContentLoaded", () => {
           navFallbackTimeout = null;
         }
         navPreview.classList.add("nav-preview--image", "nav-preview--screenshot");
-        navPreview.classList.remove("nav-preview--loading");
+        navPreview.classList.remove("nav-preview--loading", "nav-preview--fallback");
       };
-      getScreenshotBlobUrl(url, 360, 225)
+      getScreenshotBlobUrl(url, ...navScreenshotSize)
         .then((blobUrl) => {
           if (!isCurrent()) {
             return;
@@ -509,7 +518,7 @@ document.addEventListener("DOMContentLoaded", () => {
                 return;
               }
               navPreview.classList.add("nav-preview--image", "nav-preview--screenshot");
-              navPreview.classList.remove("nav-preview--loading");
+              navPreview.classList.remove("nav-preview--loading", "nav-preview--fallback");
             })
             .catch(() => {});
         })
@@ -591,7 +600,7 @@ document.addEventListener("DOMContentLoaded", () => {
     contentPreview.innerHTML = `
       <div class="content-preview__frame">
         <iframe class="content-preview__iframe" title="Link preview" loading="lazy"></iframe>
-        <img class="content-preview__image" alt="" loading="lazy">
+        <img class="content-preview__image" alt="">
         <div class="link-preview-card content-preview__card" aria-hidden="true">
           <div class="link-preview-card__text">
             <p class="link-preview-card__title"></p>
@@ -723,7 +732,7 @@ document.addEventListener("DOMContentLoaded", () => {
           ? `${themeUrl}/assets/img/linkedinhover.png`
           : "/wp-content/themes/adambasic/assets/img/linkedinhover.png";
         contentPreview.classList.add("content-preview--image", "content-preview--screenshot");
-        contentPreview.classList.remove("content-preview--loading");
+        contentPreview.classList.remove("content-preview--loading", "content-preview--fallback");
       } else {
       const currentToken = ++contentScreenshotToken;
       const isCurrent = () => currentToken === contentScreenshotToken && activeContentLink === link;
@@ -754,9 +763,9 @@ document.addEventListener("DOMContentLoaded", () => {
           contentFallbackTimeout = null;
         }
         contentPreview.classList.add("content-preview--image", "content-preview--screenshot");
-        contentPreview.classList.remove("content-preview--loading");
+        contentPreview.classList.remove("content-preview--loading", "content-preview--fallback");
       };
-      getScreenshotBlobUrl(url, 280, 175)
+      getScreenshotBlobUrl(url, ...contentScreenshotSize)
         .then((blobUrl) => {
           if (!isCurrent()) {
             return;
@@ -768,7 +777,7 @@ document.addEventListener("DOMContentLoaded", () => {
                 return;
               }
               contentPreview.classList.add("content-preview--image", "content-preview--screenshot");
-              contentPreview.classList.remove("content-preview--loading");
+              contentPreview.classList.remove("content-preview--loading", "content-preview--fallback");
             })
             .catch(() => {});
         })
@@ -835,48 +844,58 @@ document.addEventListener("DOMContentLoaded", () => {
   }
 
   const preloadExternalPreviews = () => {
+    // Touch-only devices and data-saving connections do not need speculative images.
+    if (!window.matchMedia("(any-hover: hover)").matches || navigator.connection?.saveData) {
+      return;
+    }
     const linkSet = new Set();
     const eligible = [];
-    document.querySelectorAll("a[href]").forEach((link) => {
-      if (!isExternalLink(link)) {
+    const addLink = (link, size) => {
+      if (!isExternalLink(link) || !/^https?:$/.test(link.protocol)) {
         return;
       }
-      if (!isPreviewEligible(link) && !link.closest(".header-menu")) {
+      const rawHref = link.getAttribute("href") || "";
+      if (!link.dataset.previewUrl && rawHref.startsWith("#")) {
         return;
       }
-      const href = link.href;
-      if (href.includes("linkedin.com")) {
+      const url = link.dataset.previewUrl || link.href;
+      const key = `${url}|${size.join("x")}`;
+      if (url.includes("linkedin.com") || linkSet.has(key)) {
         return;
       }
-      if (linkSet.has(href)) {
-        return;
-      }
-      linkSet.add(href);
-      eligible.push(href);
+      linkSet.add(key);
+      const rect = link.getBoundingClientRect();
+      const visible = rect.width > 0 && rect.height > 0 &&
+        rect.bottom > 0 && rect.top < window.innerHeight;
+      eligible.push({ url, size, visible });
+    };
+    // Content first, so links such as Georgia Tech aren't queued behind the menu.
+    if (!document.body.classList.contains("page-more")) {
+      contentLinks.forEach((link) => {
+        if (isPreviewEligible(link)) {
+          addLink(link, contentScreenshotSize);
+        }
+      });
+    }
+    headerLinks.forEach((link) => {
+      addLink(link, navScreenshotSize);
     });
 
-    const queue = [...eligible];
-    const runNext = () => {
-      const next = queue.shift();
-      if (!next) {
-        return;
+    const queue = eligible.sort((a, b) => Number(b.visible) - Number(a.visible));
+    const runNext = async () => {
+      while (queue.length) {
+        const { url, size } = queue.shift();
+        // Shares the promise with hover, including while the preload is in flight.
+        await getScreenshotBlobUrl(url, ...size).catch(() => {});
       }
-      getScreenshotBlobUrl(next, 360, 240)
-        .catch(() => {})
-        .finally(() => {
-          window.setTimeout(runNext, 180);
-        });
     };
+    // Keep background requests bounded without making every link wait in one line.
+    runNext();
     runNext();
   };
 
-  if (document.readyState === "complete") {
-    window.setTimeout(preloadExternalPreviews, 500);
-  } else {
-    window.addEventListener("load", () => {
-      window.setTimeout(preloadExternalPreviews, 500);
-    });
-  }
+  // Start after the first paint, without waiting for all page images to load.
+  window.requestAnimationFrame(() => window.setTimeout(preloadExternalPreviews, 0));
 
   const aboutPage = document.querySelector(".about-page");
   const aboutDiagram = document.querySelector(".about-venn__diagram");
@@ -1485,7 +1504,6 @@ document.addEventListener("DOMContentLoaded", () => {
   window.addEventListener("resize", updateHomeSnap);
 
   const previewCards = document.querySelectorAll(".card[data-preview-url]");
-  const cardLinks = document.querySelectorAll(".card a");
   const previewParser = new DOMParser();
 
   document.addEventListener(
@@ -1546,31 +1564,6 @@ document.addEventListener("DOMContentLoaded", () => {
   previewCards.forEach((card) => {
     card.addEventListener("mouseenter", () => loadPreview(card));
     card.addEventListener("focusin", () => loadPreview(card));
-  });
-
-  const storeBackUrl = () => {
-    try {
-      window.sessionStorage.setItem("adambasic_back_url", window.location.href);
-    } catch (err) {
-      /* ignore */
-    }
-  };
-
-  cardLinks.forEach((link) => {
-    link.addEventListener("click", storeBackUrl);
-  });
-
-  const menuLinks = document.querySelectorAll(
-    ".header-menu__link, .mobile-menu__link"
-  );
-  menuLinks.forEach((link) => {
-    if (link.classList.contains("header-menu__link--back")) {
-      return;
-    }
-    if (link.classList.contains("header-menu__mobile-back")) {
-      return;
-    }
-    link.addEventListener("click", storeBackUrl);
   });
 
   const hero = document.querySelector(".hero");

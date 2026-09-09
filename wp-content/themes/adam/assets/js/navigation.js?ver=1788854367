@@ -1,0 +1,135 @@
+document.addEventListener("DOMContentLoaded", () => {
+  // Same-origin previews share sessionStorage with the tab, but are not visits.
+  if (window.self !== window.top) {
+    return;
+  }
+
+  const stateKey = "adamNavigation";
+  const pendingKey = "adam_navigation_pending";
+  const normalize = (value) => new URL(value, window.location.href).href.replace(/#.*$/, "");
+  const internalUrl = (value) => {
+    try {
+      const url = new URL(value);
+      return /^https?:$/.test(url.protocol) && url.origin === window.location.origin ? url.href : null;
+    } catch (err) {
+      return null;
+    }
+  };
+  const homeUrl = window.adamNavigation?.homeUrl || new URL("/", location.href).href;
+  const currentUrl = normalize(window.location.href);
+  const validEntry = (value) => value && internalUrl(value.url) &&
+    normalize(value.url) === currentUrl && Array.isArray(value.trail);
+  let entry = window.history.state?.[stateKey];
+
+  // A pending handoff is written only when the source document actually leaves.
+  // Reloads and browser Back/Forward use their own history entry instead.
+  try {
+    const pending = JSON.parse(window.sessionStorage.getItem(pendingKey));
+    window.sessionStorage.removeItem(pendingKey);
+    const navigationType = performance.getEntriesByType("navigation")[0]?.type;
+    if (!validEntry(entry) && navigationType === "navigate" && pending &&
+        Date.now() - pending.time < 30000 && validEntry(pending.entry) &&
+        (!document.referrer || normalize(document.referrer) === normalize(pending.from))) {
+      entry = pending.entry;
+    }
+  } catch (err) {
+    /* Storage may be disabled; the same-origin referrer remains a fallback. */
+  }
+
+  if (!validEntry(entry)) {
+    const referrer = internalUrl(document.referrer);
+    entry = {
+      url: window.location.href,
+      trail: referrer && normalize(referrer) !== currentUrl ? [{ url: referrer, scrollY: null }] : [],
+      scrollY: null,
+    };
+  }
+
+  const saveEntry = () => {
+    try {
+      window.history.replaceState({ ...window.history.state, [stateKey]: entry }, "");
+    } catch (err) {
+      /* Keep ordinary links working if history state is unavailable. */
+    }
+  };
+  saveEntry();
+
+  const navLinks = document.querySelectorAll(".header-menu__link:not(.header-menu__link--back)");
+  const matchingLink = Array.from(navLinks).find((link) => normalize(link.href) === currentUrl);
+  if (matchingLink) {
+    const originalWidth = matchingLink.offsetWidth;
+    matchingLink.textContent = (window.adamNavigation?.backLabel || "Back").toLocaleLowerCase();
+    matchingLink.style.width = originalWidth + "px";
+    matchingLink.style.display = "inline-flex";
+    matchingLink.style.justifyContent = "center";
+    matchingLink.classList.add("header-menu__link--back");
+  }
+
+  const updateBackLinks = () => {
+    const previousUrl = internalUrl(entry.trail.at(-1)?.url);
+    const backUrl = previousUrl && normalize(previousUrl) !== currentUrl ? previousUrl : homeUrl;
+    document.querySelectorAll(".header-menu__link--back").forEach((link) => {
+      link.href = backUrl;
+    });
+  };
+  updateBackLinks();
+
+  let departure = null;
+  document.addEventListener("click", (event) => {
+    if (event.defaultPrevented || event.button !== 0 || event.metaKey || event.ctrlKey ||
+        event.shiftKey || event.altKey) {
+      return;
+    }
+    const link = event.target.closest("a[href]");
+    if (!link || link.hasAttribute("download") ||
+        (link.target && link.target.toLowerCase() !== "_self")) {
+      return;
+    }
+    const destination = internalUrl(link.href);
+    if (!destination || normalize(destination) === normalize(window.location.href)) {
+      return;
+    }
+    departure = { url: destination, back: link.classList.contains("header-menu__link--back") };
+  });
+
+  window.addEventListener("pagehide", () => {
+    entry.url = window.location.href;
+    entry.scrollY = window.scrollY;
+    saveEntry();
+    if (!departure) {
+      return;
+    }
+    const previous = entry.trail.at(-1);
+    const returning = departure.back && previous && normalize(previous.url) === normalize(departure.url);
+    const nextEntry = {
+      url: departure.url,
+      trail: returning ? entry.trail.slice(0, -1) : departure.back ? [] :
+        [...entry.trail, { url: entry.url, scrollY: entry.scrollY }],
+      scrollY: returning ? previous.scrollY : null,
+    };
+    try {
+      window.sessionStorage.setItem(pendingKey, JSON.stringify({
+        from: entry.url, entry: nextEntry, time: Date.now(),
+      }));
+    } catch (err) {
+      /* Fall back to the referrer if session storage is unavailable. */
+    }
+    departure = null;
+  });
+
+  const restoreScroll = () => {
+    if (Number.isFinite(entry.scrollY)) {
+      window.scrollTo(0, entry.scrollY);
+    }
+  };
+  window.requestAnimationFrame(restoreScroll);
+  window.addEventListener("pageshow", () => {
+    const restored = window.history.state?.[stateKey];
+    if (validEntry(restored)) {
+      entry = restored;
+    }
+    departure = null;
+    updateBackLinks();
+    restoreScroll();
+  });
+});

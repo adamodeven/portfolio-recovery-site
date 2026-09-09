@@ -79,6 +79,11 @@ h1:where(.wp-block-heading).has-background,h2:where(.wp-block-heading).has-backg
 </style>
 
 <link rel='stylesheet' id='adam-style-css' href='wp-content/themes/adam/style.css%3Fver=1788341316.css' media='all' />
+<script id="adam-navigation-js-extra">
+var adamNavigation = {"homeUrl":"https://adamodeven.com/","backLabel":"Back"};
+//# sourceURL=adam-navigation-js-extra
+</script>
+<script id="adam-navigation-js" src="wp-content/themes/adam/assets/js/navigation.js%3Fver=1788854367"></script>
 
 <!-- Google tag (gtag.js) snippet added by Site Kit -->
 <!-- Google Analytics snippet added by Site Kit -->
@@ -96,7 +101,7 @@ gtag("config", "GT-MQDTTQPD", {"googlesitekit_post_type":"post"});
 <meta name="generator" content="WordPress 7.1" />
 <link rel="canonical" href="index.html%3Fp=1576.html" />
 <link rel='shortlink' href='index.html%3Fp=1576.html' />
-<meta name="generator" content="Site Kit by Google 1.186.0" /><meta name="google-site-verification" content="7onQtHPYHUf6pOMbl-MzZU4GtMgBKg53-EK8TkP37_E"><link rel="icon" href="wp-content/uploads/2025/12/siteicon-150x150.jpg" sizes="32x32" />
+<meta name="generator" content="Site Kit by Google 1.187.0" /><meta name="google-site-verification" content="7onQtHPYHUf6pOMbl-MzZU4GtMgBKg53-EK8TkP37_E"><link rel="icon" href="wp-content/uploads/2025/12/siteicon-150x150.jpg" sizes="32x32" />
 <link rel="icon" href="wp-content/uploads/2025/12/siteicon.jpg" sizes="192x192" />
 <link rel="apple-touch-icon" href="wp-content/uploads/2025/12/siteicon.jpg" />
 <meta name="msapplication-TileImage" content="https://adamodeven.com/wp-content/uploads/2025/12/siteicon.jpg" />
@@ -118,42 +123,7 @@ gtag("config", "GT-MQDTTQPD", {"googlesitekit_post_type":"post"});
         >
           back        </a>
       </div>
-      <script>
-        (function () {
-          var backLink = document.querySelector(".header-menu__link--back");
-          if (!backLink) {
-            return;
-          }
-
-          var fallbackUrl = null;
-          try {
-            var storedUrl = window.sessionStorage.getItem("adambasic_back_url");
-            if (storedUrl) {
-              fallbackUrl = storedUrl;
-            }
-          } catch (err) {
-            fallbackUrl = null;
-          }
-
-          var referrer = document.referrer || "";
-          var finalUrl = fallbackUrl;
-          if (referrer) {
-            try {
-              var refUrl = new URL(referrer, window.location.origin);
-              if (refUrl.origin === window.location.origin) {
-                finalUrl = refUrl.href;
-              }
-            } catch (err) {
-              /* ignore */
-            }
-          }
-
-          if (finalUrl) {
-            backLink.setAttribute("href", finalUrl);
-          }
-        })();
-      </script>
-          </div>
+      </div>
 </header>
 
 <main class="container" style="padding-top:24px; padding-bottom:24px;">
@@ -267,17 +237,17 @@ gtag("config", "GT-MQDTTQPD", {"googlesitekit_post_type":"post"});
 {"prefetch":[{"source":"document","where":{"and":[{"href_matches":"/*"},{"not":{"href_matches":["/wp-*.php","/wp-admin/*","/wp-content/uploads/*","/wp-content/*","/wp-content/plugins/*","/wp-content/themes/adam/*","/*\\?(.+)"]}},{"not":{"selector_matches":"a[rel~=\"nofollow\"]"}},{"not":{"selector_matches":".no-prefetch, .no-prefetch a"}}]},"eagerness":"conservative"}]}
 </script>
 <script id="adam-main-js-extra">
-var adamTheme = {"themeUrl":"https://adamodeven.com/wp-content/themes/adam","ajaxUrl":"https://adamodeven.com/wp-admin/admin-ajax.php","previewNonce":"18f3160f13"};
+var adamTheme = {"themeUrl":"https://adamodeven.com/wp-content/themes/adam","ajaxUrl":"https://adamodeven.com/wp-admin/admin-ajax.php","previewNonce":"d07f97be26"};
 //# sourceURL=adam-main-js-extra
 </script>
-<script id="adam-main-js" src="wp-content/themes/adam/assets/js/main.js%3Fver=1769041280"></script>
+<script id="adam-main-js" src="wp-content/themes/adam/assets/js/main.js%3Fver=1788854367"></script>
 <script id="adam-cursor-js" src="wp-content/themes/adam/assets/js/cursor.js%3Fver=1787195783"></script>
 <script id="googlesitekit-events-provider-content-events-js-before">
 window._googlesitekit = window._googlesitekit || {};
-window._googlesitekit.contentEvents = {"postID":1576,"isSinglePost":true};
+window._googlesitekit.contentEvents = {"postID":1576,"isSinglePost":true,"hasVimeoEmbed":false};
 //# sourceURL=googlesitekit-events-provider-content-events-js-before
 </script>
-<script id="googlesitekit-events-provider-content-events-js" src="wp-content/plugins/google-site-kit/dist/assets/js/googlesitekit-events-provider-content-events-33078016c5e1e9f07c35.js" defer></script>
+<script id="googlesitekit-events-provider-content-events-js" src="wp-content/plugins/google-site-kit/dist/assets/js/googlesitekit-events-provider-content-events-bb83c1a0aedefa5d25d1.js" defer></script>
 <script id="wp-emoji-settings" type="application/json">
 {"baseUrl":"https://s.w.org/images/core/emoji/17.0.2/72x72/","ext":".png","svgUrl":"https://s.w.org/images/core/emoji/17.0.2/svg/","svgExt":".svg","source":{"concatemoji":"https://adamodeven.com/wp-includes/js/wp-emoji-release.min.js?ver=7.1"}}
 </script>
@@ -290,4 +260,4 @@ var e="script#wp-emoji-settings",t=document.querySelector(e);if(!(t instanceof H
 </html>
 
 
-<!-- Page supported by LiteSpeed Cache 7.9.1 on 2026-09-07 22:00:10 -->
+<!-- Page supported by LiteSpeed Cache 7.9.1 on 2026-09-08 22:00:09 -->

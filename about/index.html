@@ -61,6 +61,11 @@ img:is([sizes=auto i],[sizes^="auto," i]){contain-intrinsic-size:3000px 1500px}
 </style>
 
 <link rel='stylesheet' id='adam-style-css' href='../wp-content/themes/adam/style.css%3Fver=1788341316.css' media='all' />
+<script id="adam-navigation-js-extra">
+var adamNavigation = {"homeUrl":"https://adamodeven.com/","backLabel":"Back"};
+//# sourceURL=adam-navigation-js-extra
+</script>
+<script id="adam-navigation-js" src="../wp-content/themes/adam/assets/js/navigation.js%3Fver=1788854367"></script>
 
 <!-- Google tag (gtag.js) snippet added by Site Kit -->
 <!-- Google Analytics snippet added by Site Kit -->
@@ -78,7 +83,7 @@ gtag("config", "GT-MQDTTQPD", {"googlesitekit_post_type":"page"});
 <meta name="generator" content="WordPress 7.1" />
 <link rel="canonical" href="../index.html%3Fp=620.html" />
 <link rel='shortlink' href='../index.html%3Fp=620.html' />
-<meta name="generator" content="Site Kit by Google 1.186.0" /><meta name="google-site-verification" content="7onQtHPYHUf6pOMbl-MzZU4GtMgBKg53-EK8TkP37_E"><link rel="icon" href="../wp-content/uploads/2025/12/siteicon-150x150.jpg" sizes="32x32" />
+<meta name="generator" content="Site Kit by Google 1.187.0" /><meta name="google-site-verification" content="7onQtHPYHUf6pOMbl-MzZU4GtMgBKg53-EK8TkP37_E"><link rel="icon" href="../wp-content/uploads/2025/12/siteicon-150x150.jpg" sizes="32x32" />
 <link rel="icon" href="../wp-content/uploads/2025/12/siteicon.jpg" sizes="192x192" />
 <link rel="apple-touch-icon" href="../wp-content/uploads/2025/12/siteicon.jpg" />
 <meta name="msapplication-TileImage" content="https://adamodeven.com/wp-content/uploads/2025/12/siteicon.jpg" />
@@ -130,40 +135,6 @@ gtag("config", "GT-MQDTTQPD", {"googlesitekit_post_type":"page"});
           Menu        </button>
       </div>
 
-              <script>
-          (function () {
-            var backLink = document.querySelector(".header-menu__mobile-back");
-            if (!backLink) {
-              return;
-            }
-
-            var fallbackUrl = "https:\/\/adamodeven.com\/";
-            var storedUrl = null;
-            try {
-              storedUrl = window.sessionStorage.getItem("adambasic_back_url");
-            } catch (err) {
-              storedUrl = null;
-            }
-
-            var currentUrl = window.location.href.replace(/#.*$/, "");
-            var storedClean = storedUrl ? storedUrl.replace(/#.*$/, "") : "";
-            var finalUrl = storedUrl || fallbackUrl;
-
-            if (storedClean && storedClean === currentUrl) {
-              finalUrl = fallbackUrl;
-              try {
-                window.sessionStorage.setItem("adambasic_back_url", fallbackUrl);
-              } catch (err) {
-                /* ignore */
-              }
-            }
-
-            if (finalUrl) {
-              backLink.setAttribute("href", finalUrl);
-            }
-          })();
-        </script>
-      
       <div class="mobile-menu" id="mobile-menu" aria-hidden="true">
         <div class="mobile-menu__panel">
           <nav
@@ -191,108 +162,6 @@ gtag("config", "GT-MQDTTQPD", {"googlesitekit_post_type":"page"});
                       </nav>
         </div>
       </div>
-            <script>
-      (function () {
-        var navLinks = document.querySelectorAll('.header-menu__link');
-
-        if (!navLinks.length) {
-          return;
-        }
-
-        var normalize = function (value) {
-          try {
-            return new URL(value, window.location.origin).href.replace(/#.*$/, '');
-          } catch (err) {
-            return value.replace(/#.*$/, '');
-          }
-        };
-
-        var currentUrl = normalize(window.location.href);
-        var scrollKeyPrefix = 'adambasic_scroll_';
-        var currentScrollKey = scrollKeyPrefix + currentUrl;
-
-        var setScrollPosition = function (value) {
-          try {
-            window.sessionStorage.setItem(currentScrollKey, String(Math.round(value)));
-          } catch (err) {
-            /* ignore */
-          }
-        };
-
-        navLinks.forEach(function (link) {
-          link.addEventListener('click', function () {
-            setScrollPosition(window.scrollY || window.pageYOffset);
-          });
-        });
-
-        window.addEventListener('pagehide', function () {
-          setScrollPosition(window.scrollY || window.pageYOffset);
-        });
-
-        var storedScroll = null;
-        try {
-          storedScroll = window.sessionStorage.getItem(currentScrollKey);
-        } catch (err) {
-          storedScroll = null;
-        }
-
-        if (storedScroll) {
-          var scrollValue = parseInt(storedScroll, 10);
-          if (!Number.isNaN(scrollValue)) {
-            window.requestAnimationFrame(function () {
-              window.scrollTo(0, scrollValue);
-            });
-          }
-        }
-
-        var matchingLink = Array.prototype.find.call(navLinks, function (link) {
-          return normalize(link.href) === currentUrl;
-        });
-
-        if (!matchingLink) {
-          return;
-        }
-
-        var backLabel = "Back";
-        backLabel = backLabel.toLocaleLowerCase();
-
-        var originalWidth = matchingLink.offsetWidth;
-        matchingLink.textContent = backLabel;
-        matchingLink.style.width = originalWidth + 'px';
-        matchingLink.style.display = 'inline-flex';
-        matchingLink.style.justifyContent = 'center';
-        matchingLink.classList.add('header-menu__link--back');
-
-        var homeUrl = "https:\/\/adamodeven.com\/";
-        var storedUrl = null;
-        try {
-          storedUrl = window.sessionStorage.getItem("adambasic_back_url");
-        } catch (err) {
-          storedUrl = null;
-        }
-
-        var referrer = document.referrer || "";
-        var referrerUrl = null;
-        if (!storedUrl && referrer) {
-          try {
-            var refUrl = new URL(referrer, window.location.origin);
-            if (refUrl.origin === window.location.origin) {
-              referrerUrl = refUrl.href;
-            }
-          } catch (err) {
-            referrerUrl = null;
-          }
-        }
-
-        var storedClean = storedUrl ? normalize(storedUrl) : "";
-        var finalUrl = storedUrl || referrerUrl || homeUrl;
-        if (storedClean && storedClean === currentUrl) {
-          finalUrl = homeUrl;
-        }
-
-        matchingLink.setAttribute('href', finalUrl);
-      })();
-    </script>
       </div>
 </header>
 
@@ -360,17 +229,17 @@ gtag("config", "GT-MQDTTQPD", {"googlesitekit_post_type":"page"});
 {"prefetch":[{"source":"document","where":{"and":[{"href_matches":"/*"},{"not":{"href_matches":["/wp-*.php","/wp-admin/*","/wp-content/uploads/*","/wp-content/*","/wp-content/plugins/*","/wp-content/themes/adam/*","/*\\?(.+)"]}},{"not":{"selector_matches":"a[rel~=\"nofollow\"]"}},{"not":{"selector_matches":".no-prefetch, .no-prefetch a"}}]},"eagerness":"conservative"}]}
 </script>
 <script id="adam-main-js-extra">
-var adamTheme = {"themeUrl":"https://adamodeven.com/wp-content/themes/adam","ajaxUrl":"https://adamodeven.com/wp-admin/admin-ajax.php","previewNonce":"18f3160f13"};
+var adamTheme = {"themeUrl":"https://adamodeven.com/wp-content/themes/adam","ajaxUrl":"https://adamodeven.com/wp-admin/admin-ajax.php","previewNonce":"d07f97be26"};
 //# sourceURL=adam-main-js-extra
 </script>
-<script id="adam-main-js" src="../wp-content/themes/adam/assets/js/main.js%3Fver=1769041280"></script>
+<script id="adam-main-js" src="../wp-content/themes/adam/assets/js/main.js%3Fver=1788854367"></script>
 <script id="adam-cursor-js" src="../wp-content/themes/adam/assets/js/cursor.js%3Fver=1787195783"></script>
 <script id="googlesitekit-events-provider-content-events-js-before">
 window._googlesitekit = window._googlesitekit || {};
-window._googlesitekit.contentEvents = {"postID":620,"isSinglePost":false};
+window._googlesitekit.contentEvents = {"postID":620,"isSinglePost":false,"hasVimeoEmbed":false};
 //# sourceURL=googlesitekit-events-provider-content-events-js-before
 </script>
-<script id="googlesitekit-events-provider-content-events-js" src="../wp-content/plugins/google-site-kit/dist/assets/js/googlesitekit-events-provider-content-events-33078016c5e1e9f07c35.js" defer></script>
+<script id="googlesitekit-events-provider-content-events-js" src="../wp-content/plugins/google-site-kit/dist/assets/js/googlesitekit-events-provider-content-events-bb83c1a0aedefa5d25d1.js" defer></script>
 <script id="wp-emoji-settings" type="application/json">
 {"baseUrl":"https://s.w.org/images/core/emoji/17.0.2/72x72/","ext":".png","svgUrl":"https://s.w.org/images/core/emoji/17.0.2/svg/","svgExt":".svg","source":{"concatemoji":"https://adamodeven.com/wp-includes/js/wp-emoji-release.min.js?ver=7.1"}}
 </script>
@@ -383,4 +252,4 @@ var e="script#wp-emoji-settings",t=document.querySelector(e);if(!(t instanceof H
 </html>
 
 
-<!-- Page supported by LiteSpeed Cache 7.9.1 on 2026-09-07 22:00:03 -->
+<!-- Page supported by LiteSpeed Cache 7.9.1 on 2026-09-08 22:00:02 -->
