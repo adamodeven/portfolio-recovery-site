@@ -145,7 +145,6 @@ document.addEventListener("DOMContentLoaded", () => {
   );
   let navPreview = null;
   let navFrame = null;
-  let navIframe = null;
   let navImage = null;
   let navCard = null;
   let activeNavLink = null;
@@ -155,6 +154,10 @@ document.addEventListener("DOMContentLoaded", () => {
   const screenshotCache = new Map();
   const navScreenshotSize = [360, 225];
   const contentScreenshotSize = [280, 175];
+  // Documents live only for this page visit. Never move loaded iframes between
+  // parents: doing so reloads them and loses their rendered/scroll state.
+  const internalPreviews = { nav: new Map(), content: new Map() };
+  let internalPreloadGeneration = 0;
   let navScreenshotToken = 0;
   const isSafari = (() => {
     const ua = navigator.userAgent || "";
@@ -384,7 +387,6 @@ document.addEventListener("DOMContentLoaded", () => {
     navPreview.className = "nav-preview";
     navPreview.innerHTML = `
       <div class="nav-preview__frame">
-        <iframe class="nav-preview__iframe" title="Page preview" loading="lazy"></iframe>
         <img class="nav-preview__image" alt="">
         <div class="link-preview-card nav-preview__card" aria-hidden="true">
           <div class="link-preview-card__text">
@@ -398,7 +400,6 @@ document.addEventListener("DOMContentLoaded", () => {
     `;
     document.body.appendChild(navPreview);
     navFrame = navPreview.querySelector(".nav-preview__frame");
-    navIframe = navPreview.querySelector(".nav-preview__iframe");
     navImage = navPreview.querySelector(".nav-preview__image");
     navCard = navPreview.querySelector(".nav-preview__card");
   };
@@ -445,11 +446,12 @@ document.addEventListener("DOMContentLoaded", () => {
     }
 
     ensureNavPreview();
-    if (!navPreview || !navIframe || !navImage) {
+    if (!navPreview || !navImage) {
       return;
     }
 
     resetNavPreviewState();
+    hideInternalPreviews("nav");
 
     if (navHideTimeout) {
       window.clearTimeout(navHideTimeout);
@@ -463,8 +465,6 @@ document.addEventListener("DOMContentLoaded", () => {
     const url = link.href;
     activeNavLink = link;
     if (isExternalLink(link)) {
-      navIframe.removeAttribute("src");
-      navIframe.dataset.src = "";
       navPreview.classList.add("nav-preview--external");
       navPreview.classList.add("nav-preview--loading");
       if (url.includes("linkedin.com")) {
@@ -534,10 +534,7 @@ document.addEventListener("DOMContentLoaded", () => {
         });
       }
     } else {
-      if (navIframe.dataset.src !== url) {
-        navIframe.dataset.src = url;
-        navIframe.src = url;
-      }
+      showInternalPreview(link, "nav");
     }
 
     positionNavPreview(link);
@@ -582,7 +579,6 @@ document.addEventListener("DOMContentLoaded", () => {
   const contentLinks = document.querySelectorAll("main a");
   let contentPreview = null;
   let contentFrame = null;
-  let contentIframe = null;
   let contentImage = null;
   let contentCard = null;
   let activeContentLink = null;
@@ -599,7 +595,6 @@ document.addEventListener("DOMContentLoaded", () => {
     contentPreview.className = "content-preview";
     contentPreview.innerHTML = `
       <div class="content-preview__frame">
-        <iframe class="content-preview__iframe" title="Link preview" loading="lazy"></iframe>
         <img class="content-preview__image" alt="">
         <div class="link-preview-card content-preview__card" aria-hidden="true">
           <div class="link-preview-card__text">
@@ -613,7 +608,6 @@ document.addEventListener("DOMContentLoaded", () => {
     `;
     document.body.appendChild(contentPreview);
     contentFrame = contentPreview.querySelector(".content-preview__frame");
-    contentIframe = contentPreview.querySelector(".content-preview__iframe");
     contentImage = contentPreview.querySelector(".content-preview__image");
     contentCard = contentPreview.querySelector(".content-preview__card");
   };
@@ -698,11 +692,12 @@ document.addEventListener("DOMContentLoaded", () => {
     }
 
     ensureContentPreview();
-    if (!contentPreview || !contentIframe || !contentImage) {
+    if (!contentPreview || !contentImage) {
       return;
     }
 
     resetContentPreviewState();
+    hideInternalPreviews("content");
 
     if (contentHideTimeout) {
       window.clearTimeout(contentHideTimeout);
@@ -716,8 +711,6 @@ document.addEventListener("DOMContentLoaded", () => {
     const url = previewUrl;
     activeContentLink = link;
     if (isExternalLink(link)) {
-      contentIframe.removeAttribute("src");
-      contentIframe.dataset.src = "";
       contentPreview.classList.add("content-preview--external");
       contentPreview.classList.remove(
         "content-preview--card",
@@ -798,10 +791,7 @@ document.addEventListener("DOMContentLoaded", () => {
       contentPreview.classList.remove("content-preview--card");
       contentImage.removeAttribute("src");
       contentPreview.classList.remove("content-preview--image");
-      if (contentIframe.dataset.src !== url) {
-        contentIframe.dataset.src = url;
-        contentIframe.src = url;
-      }
+      showInternalPreview(link, "content");
     }
 
     positionContentPreview(link);
@@ -843,9 +833,130 @@ document.addEventListener("DOMContentLoaded", () => {
     });
   }
 
+  const getInternalPreviewTarget = (link, prefix) => {
+    const rawHref = link.getAttribute("href") || "";
+    if (link.hasAttribute("download") ||
+        (!link.dataset.previewUrl && rawHref.startsWith("#"))) {
+      return null;
+    }
+    try {
+      const url = new URL(prefix === "content" ? link.dataset.previewUrl || link.href : link.href,
+        window.location.href);
+      if (!/^https?:$/.test(url.protocol) || url.origin !== window.location.origin) {
+        return null;
+      }
+      const previous = window.history.state?.adamNavigation?.trail?.at(-1);
+      const isBack = link.classList.contains("header-menu__link--back");
+      const scrollY = isBack && previous &&
+        previous.url.replace(/#.*$/, "") === url.href.replace(/#.*$/, "") &&
+        Number.isFinite(previous.scrollY) ? previous.scrollY : null;
+      return { url: url.href, scrollY, key: JSON.stringify([url.href, scrollY]) };
+    } catch (err) {
+      return null;
+    }
+  };
+
+  const getInternalPreview = (link, prefix) => {
+    const target = getInternalPreviewTarget(link, prefix);
+    if (!target) {
+      return null;
+    }
+    const cache = internalPreviews[prefix];
+    if (cache.has(target.key)) {
+      return cache.get(target.key);
+    }
+    if (prefix === "nav") {
+      ensureNavPreview();
+    } else {
+      ensureContentPreview();
+    }
+    const iframe = document.createElement("iframe");
+    iframe.className = `${prefix}-preview__iframe`;
+    iframe.title = "Page preview";
+    iframe.loading = "eager";
+    iframe.tabIndex = -1;
+    iframe.setAttribute("aria-hidden", "true");
+    // Preserve the iframe viewport while hidden, including its scroll offset.
+    Object.assign(iframe.style, { position: "absolute", inset: "0", visibility: "hidden" });
+    const restoreScroll = () => {
+      if (target.scrollY !== null) {
+        try {
+          iframe.contentWindow.scrollTo({ top: target.scrollY, left: 0, behavior: "instant" });
+        } catch (err) {
+          // A same-origin URL may redirect elsewhere.
+        }
+      }
+    };
+    const ready = new Promise((resolve) => {
+      // A slow embedded resource must not stall the rest of the preload queue.
+      const timeout = window.setTimeout(resolve, 8000);
+      iframe.addEventListener("load", () => {
+        restoreScroll();
+        window.requestAnimationFrame(restoreScroll);
+        window.clearTimeout(timeout);
+        resolve();
+      }, { once: true });
+    });
+    const preview = { iframe, ready, restoreScroll };
+    cache.set(target.key, preview);
+    iframe.src = target.url;
+    (prefix === "nav" ? navFrame : contentFrame).appendChild(iframe);
+    return preview;
+  };
+
+  const hideInternalPreviews = (prefix) => {
+    internalPreviews[prefix].forEach(({ iframe }) => {
+      iframe.style.visibility = "hidden";
+    });
+  };
+
+  const showInternalPreview = (link, prefix) => {
+    const preview = getInternalPreview(link, prefix);
+    if (preview) {
+      preview.restoreScroll();
+      preview.iframe.style.visibility = "visible";
+    }
+  };
+
+  const preloadInternalPreviews = () => {
+    if (window.self !== window.top || !window.matchMedia("(any-hover: hover)").matches ||
+        navigator.connection?.saveData) {
+      return;
+    }
+    const generation = ++internalPreloadGeneration;
+    const candidates = [...headerLinks].map((link) => ({ link, prefix: "nav" }));
+    if (!document.body.classList.contains("page-more")) {
+      contentLinks.forEach((link) => {
+        if (isPreviewEligible(link)) {
+          candidates.push({ link, prefix: "content" });
+        }
+      });
+    }
+    const seen = new Set();
+    const queue = candidates.filter(({ link, prefix }) => {
+      const target = getInternalPreviewTarget(link, prefix);
+      const key = target && `${prefix}|${target.key}`;
+      if (!key || seen.has(key)) {
+        return false;
+      }
+      seen.add(key);
+      return true;
+    }).sort((a, b) => Number(b.link.classList.contains("header-menu__link--back")) -
+      Number(a.link.classList.contains("header-menu__link--back")));
+    const runNext = async () => {
+      while (queue.length && generation === internalPreloadGeneration) {
+        const { link, prefix } = queue.shift();
+        await getInternalPreview(link, prefix)?.ready;
+      }
+    };
+    runNext();
+    runNext();
+  };
+
   const preloadExternalPreviews = () => {
     // Touch-only devices and data-saving connections do not need speculative images.
-    if (!window.matchMedia("(any-hover: hover)").matches || navigator.connection?.saveData) {
+    if (window.self !== window.top || !window.matchMedia("(any-hover: hover)").matches ||
+        navigator.connection?.saveData) {
       return;
     }
     const linkSet = new Set();
@@ -895,7 +1006,28 @@ document.addEventListener("DOMContentLoaded", () => {
   };
 
   // Start after the first paint, without waiting for all page images to load.
-  window.requestAnimationFrame(() => window.setTimeout(preloadExternalPreviews, 0));
+  window.requestAnimationFrame(() => window.setTimeout(() => {
+    preloadInternalPreviews();
+    preloadExternalPreviews();
+  }, 0));
+
+  window.addEventListener("pageshow", (event) => {
+    if (!event.persisted) {
+      return;
+    }
+    // Browser Back/Forward can restore this entire document from memory. Give
+    // its internal previews a fresh document too, after navigation restores state.
+    internalPreloadGeneration++;
+    Object.values(internalPreviews).forEach((cache) => {
+      cache.forEach(({ iframe }) => iframe.remove());
+      cache.clear();
+    });
+    navPreview?.classList.remove("nav-preview--visible");
+    contentPreview?.classList.remove("content-preview--visible");
+    activeNavLink = null;
+    activeContentLink = null;
+    preloadInternalPreviews();
+  });
 
   const aboutPage = document.querySelector(".about-page");
   const aboutDiagram = document.querySelector(".about-venn__diagram");
