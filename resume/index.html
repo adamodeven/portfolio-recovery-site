@@ -4,14 +4,21 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <script>
+    // Hide the body before it exists; navigation.js reveals it once the saved
+    // scroll position is in place. The timeout is only a safety net for the
+    // case where that script never runs.
     (function () {
+      // Hover previews render pages in hidden iframes; those need no fade.
+      if (window.self !== window.top) {
+        return;
+      }
       if (window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches) {
         return;
       }
       document.documentElement.classList.add('page-transition-init');
       window.setTimeout(function () {
         document.documentElement.classList.remove('page-transition-init');
-      }, 1200);
+      }, 4000);
     })();
   </script>
   <title>resume &#8211; Adam O&#039;Deven</title>
@@ -72,12 +79,12 @@ ol,ul{box-sizing:border-box}:root :where(.wp-block-list.has-background){padding:
 /*# sourceURL=global-styles-inline-css */
 </style>
 
-<link rel='stylesheet' id='adam-style-css' href='../wp-content/themes/adam/style.css%3Fver=1788341316.css' media='all' />
+<link rel='stylesheet' id='adam-style-css' href='../wp-content/themes/adam/style.css%3Fver=1789135100.css' media='all' />
 <script id="adam-navigation-js-extra">
 var adamNavigation = {"homeUrl":"https://adamodeven.com/","backLabel":"Back"};
 //# sourceURL=adam-navigation-js-extra
 </script>
-<script id="adam-navigation-js" src="../wp-content/themes/adam/assets/js/navigation.js%3Fver=1788854367"></script>
+<script id="adam-navigation-js" src="../wp-content/themes/adam/assets/js/navigation.js%3Fver=1789135100"></script>
 
 <!-- Google tag (gtag.js) snippet added by Site Kit -->
 <!-- Google Analytics snippet added by Site Kit -->
@@ -261,7 +268,7 @@ gtag("config", "GT-MQDTTQPD", {"googlesitekit_post_type":"page"});
               class="resume-exp-row"
               data-resume-exp-row
               data-place="Detroit, MI"
-              data-skills="0,1,2,3,6,4"
+              data-skills="0,1,2,3,5,6,4"
                               data-lat="42.48"
                 data-lon="-83.48"
                           >
@@ -269,7 +276,7 @@ gtag("config", "GT-MQDTTQPD", {"googlesitekit_post_type":"page"});
                                   <img class="resume-exp-row__logo" src="../wp-content/uploads/2026/08/Aug-18-2026-Screenshot-from-Media-Library.png" alt="" loading="lazy">
                                 <div class="resume-exp-row__body">
                   <div class="resume-exp-row__top">
-                                          <a class="resume-exp-row__org" href="../index.html%3Fp=1576.html" target="_blank" rel="noopener">Scout Motors</a>
+                                          <span class="resume-exp-row__org">Scout Motors</span>
                                                               <div class="resume-exp-row__dates" data-resume-exp-dates>May – Aug 2026</div>
                                       </div>
                                       <div class="resume-exp-row__role">Advanced Concepts Engineering Intern</div>
@@ -277,13 +284,12 @@ gtag("config", "GT-MQDTTQPD", {"googlesitekit_post_type":"page"});
                                                         <div class="resume-exp-row__summary">Pedestrian protection concept development for MY2027 NCAP, alongside prototype lab operations.</div>
                                                         <div class="resume-exp-row__detail" data-resume-exp-detail>
                       <ul class="resume-exp-row__bullets">
-                                                  <li><span aria-hidden="true">&ndash;</span><span>Owned an end-to-end pedestrian protection concept program, advancing five concepts through research, weighted down-selection, and two functional prototypes to final review with engineering leadership, yielding three invention disclosures and one patent filing.</span></li>
-                                                  <li><span aria-hidden="true">&ndash;</span><span>Defined the concept space from three competing constraints (NCAP lower-leg injury metrics, best-in-class approach angle, heritage inspired front-end design intent) and generated five concepts satisfying all three.</span></li>
+                                                  <li><span aria-hidden="true">&ndash;</span><span>Owned an end-to-end pedestrian protection concept program, advancing five concepts through research, decision matrix down-selection, and two functional prototypes to final review with engineering leadership, yielding three invention disclosures and one patent filing.</span></li>
+                                                  <li><span aria-hidden="true">&ndash;</span><span>Researched the injury mechanisms behind NCAP lower-leg metrics, including tibia bending and knee ligament elongation, and translated them into design targets for concept generation.</span></li>
+                                                  <li><span aria-hidden="true">&ndash;</span><span>Defined the concept space around three competing constraints: NCAP lower-leg injury metrics, best-in-class approach angle, and heritage-inspired front-end design intent, generating five concepts satisfying all three.</span></li>
+                                                  <li><span aria-hidden="true">&ndash;</span><span>Laid out a deployable leg-catcher linkage in CAD around existing front-end hardware and printed a motion prototype to evaluate stowed and deployed travel before committing geometry.</span></li>
                                                   <li><span aria-hidden="true">&ndash;</span><span>Consulted CAE, Vehicle Architecture, V&amp;V, Safety, and Legal throughout concept development, translating their domain requirements into design decisions across all five concepts.</span></li>
-                                                  <li><span aria-hidden="true">&ndash;</span><span>Built the business case under an undefined regulatory timeline, scoping adoption by trim package and benchmarking competitor crash performance to frame the investment decision for leadership.</span></li>
-                                                  <li><span aria-hidden="true">&ndash;</span><span>Rebuilt the prototype lab&#039;s part-request workflow with missing-information and print-approval gates, then produced 293 in-house parts for a prototype vehicle build, avoiding $75,000+ against outsourced quotes.</span></li>
-                                                  <li><span aria-hidden="true">&ndash;</span><span>Provided DFM support on incoming part requests and presented finished parts to the production team in Columbia, SC, securing per-part quality sign-off.</span></li>
-                                                  <li><span aria-hidden="true">&ndash;</span><span>Specified, installed, and trained the team on the lab&#039;s first industrial SLS printer, replacing multi-week outsourced quotes with in-house nylon parts and cutting bracket iteration from weeks to days.</span></li>
+                                                  <li><span aria-hidden="true">&ndash;</span><span>Rebuilt the prototype lab&#039;s part-request workflow and produced 293 in-house parts for a prototype vehicle build, avoiding $75,000+ against outsourced quotes. Also specified, installed, and trained the team on the lab&#039;s first industrial SLS printer, cutting nylon-part iteration from weeks to days.</span></li>
                                               </ul>
                     </div>
                                   </div>
@@ -293,7 +299,7 @@ gtag("config", "GT-MQDTTQPD", {"googlesitekit_post_type":"page"});
               class="resume-exp-row"
               data-resume-exp-row
               data-place="Atlanta, GA"
-              data-skills="0,1,2,3"
+              data-skills="0,1,2,3,5"
                               data-lat="33.78"
                 data-lon="-84.4"
                           >
@@ -311,9 +317,8 @@ gtag("config", "GT-MQDTTQPD", {"googlesitekit_post_type":"page"});
                       <ul class="resume-exp-row__bullets">
                                                   <li><span aria-hidden="true">&ndash;</span><span>Derived mounting, reach, and clearance requirements for a chair-mounted dog treat dispenser by fitting prototypes to power wheelchairs in use at the Shepherd Center.</span></li>
                                                   <li><span aria-hidden="true">&ndash;</span><span>Rotated the lid opening direction and lowered the dispenser profile after on-chair testing, clearing the user&#039;s natural hand position at the armrest.</span></li>
-                                                  <li><span aria-hidden="true">&ndash;</span><span>Fabricated each revision from 3D-printed, manually machined, and off-the-shelf parts, selecting efficient processes part-by-part to enable three full user feedback rounds in one semester.</span></li>
-                                                  <li><span aria-hidden="true">&ndash;</span><span>Revised the dispenser across 5+ builds and three rounds of Shepherd Center user feedback, relocating the mount into seated reach, reducing actuation force, and refining the dispensing path to cut jamming across treat sizes.</span></li>
-                                                  <li><span aria-hidden="true">&ndash;</span><span>Evaluated and documented SolidWorks against Fusion 360 for low-volume, made-to-order product workflows, giving the lab a documented basis for tool selection on later projects.</span></li>
+                                                  <li><span aria-hidden="true">&ndash;</span><span>Revised the dispenser across 5+ builds and three rounds of Shepherd Center user feedback, relocating the mount into seated reach, reducing actuation force, and refining the dispensing path to reduce jamming across treat sizes.</span></li>
+                                                  <li><span aria-hidden="true">&ndash;</span><span>Fabricated each revision from 3D-printed, manually machined, and off-the-shelf parts, selecting processes part-by-part to enable three complete user feedback cycles in one semester.</span></li>
                                               </ul>
                     </div>
                                   </div>
@@ -341,9 +346,9 @@ gtag("config", "GT-MQDTTQPD", {"googlesitekit_post_type":"page"});
                       <ul class="resume-exp-row__bullets">
                                                   <li><span aria-hidden="true">&ndash;</span><span>Led mechanical design, prototyping, and assembly of 28 subsystems across seven competition robots in four seasons, contributing to 13 event wins and world championship qualification every season.</span></li>
                                                   <li><span aria-hidden="true">&ndash;</span><span>Owned the complete mechanical design of a second competition robot, developing a custom high-speed drivetrain and vacuum downforce system that took the robot to a division win.</span></li>
-                                                  <li><span aria-hidden="true">&ndash;</span><span>Built parametric CAD assemblies for both prototype and competition systems, propagating subsystem changes through the robot without downstream rework.</span></li>
-                                                  <li><span aria-hidden="true">&ndash;</span><span>Integrated mechanical and electrical subsystems within tight spatial constraints, maintaining tool access and modularity for between-match repairs.</span></li>
-                                                  <li><span aria-hidden="true">&ndash;</span><span>Coordinated build and assembly across a 25-person interdisciplinary team, sequencing subsystem integration to shop capacity and holding builds to fixed competition dates.</span></li>
+                                                  <li><span aria-hidden="true">&ndash;</span><span>Built parametric CAD assemblies for prototype and competition systems, propagating subsystem changes through the robot without downstream rework.</span></li>
+                                                  <li><span aria-hidden="true">&ndash;</span><span>Integrated mechanical and electrical subsystems within tight spatial constraints while maintaining tool access and modularity for between-match repairs.</span></li>
+                                                  <li><span aria-hidden="true">&ndash;</span><span>Revamped the program&#039;s visual identity through a senior-year independent study, standardizing brand language across presentations, documentation, and public-facing materials.</span></li>
                                               </ul>
                     </div>
                                   </div>
@@ -369,10 +374,9 @@ gtag("config", "GT-MQDTTQPD", {"googlesitekit_post_type":"page"});
                                                         <div class="resume-exp-row__summary">Full-vehicle teardown, diagnosis, and reassembly across body-on-frame and unibody platforms.</div>
                                                         <div class="resume-exp-row__detail" data-resume-exp-detail>
                       <ul class="resume-exp-row__bullets">
-                                                  <li><span aria-hidden="true">&ndash;</span><span>Performed a full teardown on a diesel truck (body, intake, exhaust manifold, turbo, EGR, fuel lines, wiring harness) to reach and repair a turbo coolant line leak, then reassembled through the original routing and service sequencing.</span></li>
-                                                  <li><span aria-hidden="true">&ndash;</span><span>Worked across body-on-frame and unibody platforms, observing differences in structural layout, mounting strategy, and system integration.</span></li>
-                                                  <li><span aria-hidden="true">&ndash;</span><span>Diagnosed sensor and electrical faults with diagnostic tools, tracing vehicle codes to component-level failures through dependent systems.</span></li>
-                                                  <li><span aria-hidden="true">&ndash;</span><span>Understood serviceability and assembly sequencing during teardown, identifying dependencies between components and access paths.</span></li>
+                                                  <li><span aria-hidden="true">&ndash;</span><span>Performed a full teardown on a diesel truck, including body, intake, exhaust manifold, turbo, EGR, fuel lines, and wiring harness, to reach and repair a turbo coolant line leak before reassembling through the original routing and service sequence.</span></li>
+                                                  <li><span aria-hidden="true">&ndash;</span><span>Worked across body-on-frame and unibody platforms, developing an understanding of structural layout, mounting strategy, serviceability, and system integration.</span></li>
+                                                  <li><span aria-hidden="true">&ndash;</span><span>Diagnosed sensor and electrical faults with diagnostic tools, tracing vehicle codes through dependent systems to component-level failures.</span></li>
                                               </ul>
                     </div>
                                   </div>
@@ -398,8 +402,8 @@ gtag("config", "GT-MQDTTQPD", {"googlesitekit_post_type":"page"});
                                                         <div class="resume-exp-row__summary">Hardware deployment and physical infrastructure troubleshooting across campus.</div>
                                                         <div class="resume-exp-row__detail" data-resume-exp-detail>
                       <ul class="resume-exp-row__bullets">
-                                                  <li><span aria-hidden="true">&ndash;</span><span>Support deployment and installation of campus hardware systems, emphasizing repeatable process and clear documentation.</span></li>
-                                                  <li><span aria-hidden="true">&ndash;</span><span>Troubleshoot physical infrastructure across distributed installations, improving reliability and deployment consistency.</span></li>
+                                                  <li><span aria-hidden="true">&ndash;</span><span>Supported deployment, installation, and troubleshooting of campus hardware infrastructure across distributed installations.</span></li>
+                                                  <li><span aria-hidden="true">&ndash;</span><span>Developed repeatable deployment processes and documentation to improve installation consistency and system reliability.</span></li>
                                               </ul>
                     </div>
                                   </div>
@@ -459,11 +463,11 @@ gtag("config", "GT-MQDTTQPD", {"googlesitekit_post_type":"page"});
 {"prefetch":[{"source":"document","where":{"and":[{"href_matches":"/*"},{"not":{"href_matches":["/wp-*.php","/wp-admin/*","/wp-content/uploads/*","/wp-content/*","/wp-content/plugins/*","/wp-content/themes/adam/*","/*\\?(.+)"]}},{"not":{"selector_matches":"a[rel~=\"nofollow\"]"}},{"not":{"selector_matches":".no-prefetch, .no-prefetch a"}}]},"eagerness":"conservative"}]}
 </script>
 <script id="adam-main-js-extra">
-var adamTheme = {"themeUrl":"https://adamodeven.com/wp-content/themes/adam","ajaxUrl":"https://adamodeven.com/wp-admin/admin-ajax.php","previewNonce":"52685260b6"};
+var adamTheme = {"themeUrl":"https://adamodeven.com/wp-content/themes/adam","ajaxUrl":"https://adamodeven.com/wp-admin/admin-ajax.php","previewNonce":"a191dea841"};
 //# sourceURL=adam-main-js-extra
 </script>
-<script id="adam-main-js" src="../wp-content/themes/adam/assets/js/main.js%3Fver=1789089368"></script>
-<script id="adam-cursor-js" src="../wp-content/themes/adam/assets/js/cursor.js%3Fver=1787195783"></script>
+<script data-wp-strategy="defer" defer id="adam-main-js" src="../wp-content/themes/adam/assets/js/main.js%3Fver=1789133807"></script>
+<script data-wp-strategy="defer" defer id="adam-cursor-js" src="../wp-content/themes/adam/assets/js/cursor.js%3Fver=1789132565"></script>
 <script id="adam-resume-js" src="../wp-content/themes/adam/assets/js/resume.js%3Fver=1787025618"></script>
 <script id="googlesitekit-events-provider-content-events-js-before">
 window._googlesitekit = window._googlesitekit || {};
@@ -483,4 +487,4 @@ var e="script#wp-emoji-settings",t=document.querySelector(e);if(!(t instanceof H
 </html>
 
 
-<!-- Page supported by LiteSpeed Cache 7.9.1 on 2026-09-10 22:00:03 -->
+<!-- Page supported by LiteSpeed Cache 7.9.1 on 2026-09-11 22:00:04 -->

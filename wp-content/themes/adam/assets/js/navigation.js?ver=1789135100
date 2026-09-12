@@ -1,0 +1,478 @@
+// Return chain, scroll restoration and page transitions.
+//
+// This is a blocking script in <head> on purpose. The header's links are clickable
+// as soon as they are painted, long before the deferred scripts have loaded, so
+// the click handling, the departure bookkeeping and the fade must already exist
+// by then. Everything that needs the parsed document waits for it explicitly.
+//
+// Each document keeps one entry in history.state:
+//   { url, index, scrollY, trail: [{ url, index, scrollY }, ...] }
+// `index` is the document's position in the session history, `trail` the pages
+// that led here (oldest first). Leaving to a new page pushes this document onto
+// the trail; returning pops it. When the return target is still in the session
+// history the back link uses history.go(), which restores that document with its
+// own state (from the back/forward cache when the browser allows it). Otherwise
+// the next entry is handed over through sessionStorage.
+(() => {
+  // Same-origin previews share sessionStorage with the tab, but are not visits.
+  if (window.self !== window.top) {
+    return;
+  }
+
+  const api = window.adamNavigation = window.adamNavigation || {};
+  const stateKey = "adamNavigation";
+  const pendingKey = "adam_navigation_pending";
+  const scrollKey = "adam_navigation_scroll";
+  const root = document.documentElement;
+  const reducedMotion = window.matchMedia
+    ? window.matchMedia("(prefers-reduced-motion: reduce)").matches
+    : false;
+  const normalize = (value) => new URL(value, window.location.href).href.replace(/#.*$/, "");
+  const internalUrl = (value) => {
+    try {
+      // Absolute URLs only: link.href already is, and a missing value must not
+      // resolve to a relative path.
+      const url = new URL(value);
+      return /^https?:$/.test(url.protocol) && url.origin === window.location.origin ? url.href : null;
+    } catch (err) {
+      return null;
+    }
+  };
+  const homeUrl = api.homeUrl || new URL("/", window.location.href).href;
+  const currentUrl = normalize(window.location.href);
+  const navigationType = performance.getEntriesByType("navigation")[0]?.type || "navigate";
+  const historyIndex = () => window.history.length - 1;
+  const validEntry = (value) => Boolean(value && internalUrl(value.url) &&
+    normalize(value.url) === currentUrl && Array.isArray(value.trail));
+
+  let entry = window.history.state?.[stateKey];
+
+  // A pending handoff is written only when the source document actually leaves
+  // through a link. Reloads and history traversals carry their own state.
+  try {
+    const pending = JSON.parse(window.sessionStorage.getItem(pendingKey));
+    window.sessionStorage.removeItem(pendingKey);
+    if (!validEntry(entry) && navigationType === "navigate" && pending &&
+        Date.now() - pending.time < 30000 && validEntry(pending.entry) &&
+        (!document.referrer || normalize(document.referrer) === normalize(pending.from))) {
+      entry = pending.entry;
+    }
+  } catch (err) {
+    /* Storage may be disabled; the same-origin referrer remains a fallback. */
+  }
+
+  if (!validEntry(entry)) {
+    const referrer = internalUrl(document.referrer);
+    entry = {
+      url: window.location.href,
+      trail: referrer && normalize(referrer) !== currentUrl ? [{ url: referrer, scrollY: null }] : [],
+      scrollY: null,
+    };
+  }
+  // A fresh document always sits at the end of the session history.
+  if (navigationType === "navigate" || !Number.isInteger(entry.index)) {
+    entry.index = historyIndex();
+  }
+  // History state written during pagehide is committed asynchronously: it does
+  // not survive a reload and can lose the race against a history traversal.
+  // sessionStorage writes are not, so the position each history entry was last
+  // hidden at is kept there too, keyed by its index, and preferred when it matches.
+  const readScrollMap = () => {
+    try {
+      const map = JSON.parse(window.sessionStorage.getItem(scrollKey));
+      return map && typeof map === "object" ? map : {};
+    } catch (err) {
+      return {};
+    }
+  };
+  if (navigationType !== "navigate") {
+    const hidden = readScrollMap()[entry.index];
+    if (hidden && normalize(hidden.url) === currentUrl && Number.isFinite(hidden.scrollY)) {
+      entry.scrollY = hidden.scrollY;
+    }
+  }
+
+  const saveEntry = () => {
+    try {
+      window.history.replaceState({ ...window.history.state, [stateKey]: entry }, "");
+    } catch (err) {
+      /* Keep ordinary links working if history state is unavailable. */
+    }
+  };
+  saveEntry();
+  try {
+    // Scroll is restored here, before the page is revealed, so the browser must
+    // not apply its own late restoration on reload or history traversal.
+    window.history.scrollRestoration = "manual";
+  } catch (err) {
+    /* ignore */
+  }
+
+  const previousVisit = () => entry.trail.at(-1) || null;
+  const lastVisit = (url) => {
+    const target = internalUrl(url);
+    if (!target) {
+      return null;
+    }
+    const wanted = normalize(target);
+    return entry.trail.findLast((visit) => normalize(visit.url) === wanted) || null;
+  };
+  const backUrl = () => {
+    const previous = internalUrl(previousVisit()?.url);
+    return previous && normalize(previous) !== currentUrl ? previous : homeUrl;
+  };
+  // Previews use this to show a page the way it was last seen.
+  api.lastVisit = lastVisit;
+  api.trail = () => entry.trail.map((visit) => ({ ...visit }));
+
+  // Same-document entries (hash links) shift this document's history position.
+  window.addEventListener("hashchange", () => {
+    entry.url = window.location.href;
+    if (historyIndex() > entry.index) {
+      entry.index = historyIndex();
+    }
+    saveEntry();
+  });
+  window.addEventListener("popstate", (event) => {
+    const restored = event.state?.[stateKey];
+    if (validEntry(restored)) {
+      entry = restored;
+    }
+  });
+
+  /* ---- Departures -------------------------------------------------------- */
+
+  const fadeDuration = () => {
+    if (reducedMotion) {
+      return 0;
+    }
+    const raw = window.getComputedStyle(root).getPropertyValue("--page-fade-duration").trim();
+    const value = parseFloat(raw);
+    if (!Number.isFinite(value)) {
+      return 280;
+    }
+    return raw.endsWith("ms") ? value : raw.endsWith("s") ? value * 1000 : value;
+  };
+
+  const prefetched = new Set();
+  const prefetch = (url) => {
+    if (prefetched.has(url)) {
+      return;
+    }
+    prefetched.add(url);
+    try {
+      if (HTMLScriptElement.supports?.("speculationrules")) {
+        const rules = document.createElement("script");
+        rules.type = "speculationrules";
+        rules.textContent = JSON.stringify({ prefetch: [{ source: "list", urls: [url] }] });
+        document.head.appendChild(rules);
+        return;
+      }
+      const hint = document.createElement("link");
+      hint.rel = "prefetch";
+      hint.as = "document";
+      hint.href = url;
+      document.head.appendChild(hint);
+    } catch (err) {
+      /* Prefetching is only a hint. */
+    }
+  };
+
+  const eligibleLink = (event) => {
+    if (event.defaultPrevented || event.metaKey || event.ctrlKey || event.shiftKey || event.altKey) {
+      return null;
+    }
+    const link = event.target?.closest?.("a[href]");
+    if (!link || link.hasAttribute("download") ||
+        (link.target && link.target.toLowerCase() !== "_self")) {
+      return null;
+    }
+    if ((link.getAttribute("href") || "").startsWith("#")) {
+      return null;
+    }
+    const isBack = link.classList.contains("header-menu__link--back");
+    // The back link's real destination is the trail, whatever its href says: it
+    // may be clicked before the deferred scripts have rewritten it.
+    const destination = internalUrl(isBack ? backUrl() : link.href);
+    if (!destination || normalize(destination) === currentUrl) {
+      return null;
+    }
+    return { link, destination, isBack, restoreScroll: link.hasAttribute("data-restore-scroll") };
+  };
+
+  // Where in the trail a return link goes, and how many history steps that is.
+  // Fixed-destination return links (data-restore-scroll) go back to the latest
+  // visit of their destination even if other pages were visited in between.
+  // Browsers cap the session history at 50 entries and shift positions after
+  // that, so indexes are only trusted below the cap.
+  const returnTarget = (target) => {
+    let returnIndex = -1;
+    if (target.restoreScroll) {
+      returnIndex = entry.trail.findLastIndex((visit) => normalize(visit.url) === normalize(target.destination));
+    } else if (target.isBack) {
+      const previous = previousVisit();
+      if (previous && normalize(previous.url) === normalize(target.destination)) {
+        returnIndex = entry.trail.length - 1;
+      }
+    }
+    const visit = returnIndex >= 0 ? entry.trail[returnIndex] : null;
+    const steps = visit && Number.isInteger(visit.index) && visit.index < entry.index && entry.index < 49
+      ? visit.index - entry.index : 0;
+    return { returnIndex, steps };
+  };
+
+  // Get the next page's request going while the pointer is still on its way down.
+  document.addEventListener("pointerdown", (event) => {
+    if (event.button !== 0) {
+      return;
+    }
+    const target = eligibleLink(event);
+    if (target && returnTarget(target).steps === 0) {
+      prefetch(target.destination);
+    }
+  }, { passive: true, capture: true });
+
+  let departure = null;
+  let leaving = false;
+  document.addEventListener("click", (event) => {
+    if (event.button !== 0) {
+      return;
+    }
+    const target = eligibleLink(event);
+    if (!target) {
+      return;
+    }
+    event.preventDefault();
+    if (leaving) {
+      return;
+    }
+    leaving = true;
+
+    const { returnIndex, steps } = returnTarget(target);
+    departure = {
+      url: target.destination,
+      returnIndex,
+      viaHistory: steps < 0,
+      // A return link whose destination is not on the trail starts a new one.
+      reset: target.isBack || target.restoreScroll,
+    };
+    if (steps === 0) {
+      prefetch(target.destination);
+    }
+
+    const go = () => {
+      if (steps < 0) {
+        // That document is still in the session history: restore it with its own
+        // state. pagehide only fires once the traversal commits, so give a slow
+        // reload time before concluding that it did not happen.
+        window.history.go(steps);
+        window.setTimeout(() => {
+          if (departure) {
+            departure.viaHistory = false;
+            window.location.href = target.destination;
+          }
+        }, 4000);
+        return;
+      }
+      window.location.href = target.destination;
+    };
+    root.classList.add("page-transition-out");
+    window.setTimeout(go, fadeDuration());
+    // A navigation the browser never commits must not leave the page invisible.
+    window.setTimeout(() => {
+      if (leaving) {
+        leaving = false;
+        departure = null;
+        root.classList.remove("page-transition-out");
+      }
+    }, 15000);
+  });
+
+  window.addEventListener("pagehide", () => {
+    entry.url = window.location.href;
+    entry.scrollY = window.scrollY;
+    saveEntry();
+    try {
+      const map = readScrollMap();
+      Object.keys(map).forEach((index) => {
+        if (Math.abs(Number(index) - entry.index) > 50) {
+          delete map[index];
+        }
+      });
+      map[entry.index] = { url: entry.url, scrollY: entry.scrollY };
+      window.sessionStorage.setItem(scrollKey, JSON.stringify(map));
+    } catch (err) {
+      /* ignore */
+    }
+    cancelRestore();
+    if (!departure || departure.viaHistory) {
+      departure = null;
+      return;
+    }
+    const returning = departure.returnIndex >= 0;
+    const nextEntry = {
+      url: departure.url,
+      trail: returning ? entry.trail.slice(0, departure.returnIndex) : departure.reset ? [] :
+        [...entry.trail, { url: entry.url, index: entry.index, scrollY: entry.scrollY }],
+      scrollY: returning ? entry.trail[departure.returnIndex].scrollY : null,
+    };
+    try {
+      window.sessionStorage.setItem(pendingKey, JSON.stringify({
+        from: entry.url, entry: nextEntry, time: Date.now(),
+      }));
+    } catch (err) {
+      /* Fall back to the referrer if session storage is unavailable. */
+    }
+    departure = null;
+  });
+
+  /* ---- Arrival: restore scroll, then reveal ------------------------------ */
+
+  // The body starts invisible (see the inline script in header.php). The saved
+  // scroll position is applied while it still is, so the page is revealed already
+  // in place instead of jumping after it has faded in.
+  let restoreTarget = Number.isFinite(entry.scrollY) ? entry.scrollY : null;
+  let restoreFrame = null;
+  let revealed = false;
+  let bodyFrames = 0;
+  let stableFrames = 0;
+  let lastHeight = -1;
+  const startTime = performance.now();
+
+  const cancelRestore = () => {
+    restoreTarget = null;
+    if (restoreFrame !== null) {
+      window.cancelAnimationFrame(restoreFrame);
+      restoreFrame = null;
+    }
+  };
+  // Any user input takes precedence over restoring an old scroll position.
+  ["wheel", "touchstart", "pointerdown"].forEach((type) => {
+    window.addEventListener(type, cancelRestore, { passive: true, capture: true });
+  });
+  window.addEventListener("keydown", (event) => {
+    if (["ArrowUp", "ArrowDown", "ArrowLeft", "ArrowRight", "PageUp", "PageDown", "Home", "End", " "].includes(event.key)) {
+      cancelRestore();
+    }
+  }, { capture: true });
+
+  // Fade the body in from wherever it is. Restarting the animation needs the
+  // class to be re-applied after a style flush.
+  const fadeIn = () => {
+    root.classList.remove("page-transition-in");
+    void root.offsetWidth;
+    root.classList.add("page-transition-in");
+  };
+  root.addEventListener("animationend", (event) => {
+    if (event.animationName === "page-fade-in") {
+      root.classList.remove("page-transition-in");
+    }
+  });
+
+  const reveal = () => {
+    revealed = true;
+    root.classList.remove("page-transition-init");
+    if (!reducedMotion) {
+      fadeIn();
+    }
+  };
+
+  const tick = (isFrame = true) => {
+    if (restoreFrame !== null) {
+      window.cancelAnimationFrame(restoreFrame);
+      restoreFrame = null;
+    }
+    const parsed = document.readyState !== "loading";
+    let restored = restoreTarget === null;
+    if (document.body) {
+      if (isFrame) {
+        bodyFrames += 1;
+      }
+      if (!restored) {
+        window.scrollTo({ top: restoreTarget, left: 0, behavior: "instant" });
+        restored = Math.abs(window.scrollY - restoreTarget) < 1;
+      }
+      const height = root.scrollHeight;
+      stableFrames = height === lastHeight ? stableFrames + 1 : 0;
+      lastHeight = height;
+    }
+    const elapsed = performance.now() - startTime;
+    if (!revealed) {
+      // A page too short for its saved offset is revealed once its layout settles.
+      const ready = bodyFrames >= 1 && parsed && (restored || stableFrames >= 3);
+      if (ready || elapsed > 2500) {
+        reveal();
+      }
+    }
+    // Media without reserved space can still grow the page after the reveal;
+    // keep trying until the document is complete and its height has settled.
+    const finished = restored || (document.readyState === "complete" && stableFrames >= 3) || elapsed > 8000;
+    if (revealed && finished) {
+      restoreTarget = null;
+      return;
+    }
+    restoreFrame = window.requestAnimationFrame(tick);
+  };
+  restoreFrame = window.requestAnimationFrame(tick);
+  // Frames wait for the next vertical sync; a small document can finish loading
+  // before that. Restore as soon as the parser is done as well.
+  document.addEventListener("readystatechange", () => tick(false));
+
+  /* ---- Parsed document ---------------------------------------------------- */
+
+  const relabelCurrentNavLink = () => {
+    const navLinks = document.querySelectorAll(".header-menu__link:not(.header-menu__link--back)");
+    const matchingLink = Array.from(navLinks).find((link) => normalize(link.href) === currentUrl);
+    if (!matchingLink) {
+      return;
+    }
+    const originalWidth = matchingLink.offsetWidth;
+    matchingLink.textContent = (api.backLabel || "Back").toLocaleLowerCase();
+    matchingLink.style.width = originalWidth + "px";
+    matchingLink.style.display = "inline-flex";
+    matchingLink.style.justifyContent = "center";
+    matchingLink.classList.add("header-menu__link--back");
+  };
+
+  const updateBackLinks = () => {
+    const url = backUrl();
+    document.querySelectorAll(".header-menu__link--back").forEach((link) => {
+      link.href = url;
+    });
+  };
+
+  const onDocumentReady = (callback) => {
+    if (document.readyState === "loading") {
+      document.addEventListener("DOMContentLoaded", callback, { once: true });
+    } else {
+      callback();
+    }
+  };
+  onDocumentReady(() => {
+    relabelCurrentNavLink();
+    updateBackLinks();
+  });
+
+  window.addEventListener("pageshow", (event) => {
+    const restored = window.history.state?.[stateKey];
+    if (validEntry(restored)) {
+      entry = restored;
+    }
+    departure = null;
+    leaving = false;
+    updateBackLinks();
+    if (!event.persisted) {
+      return;
+    }
+    // Back from the back/forward cache: the document still carries the fade-out
+    // it left with, and its scroll position. Fade it back in where it was.
+    cancelRestore();
+    window.requestAnimationFrame(() => {
+      root.classList.remove("page-transition-init");
+      root.classList.remove("page-transition-out");
+      if (!reducedMotion) {
+        fadeIn();
+      }
+    });
+  });
+})();

@@ -4,14 +4,21 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <script>
+    // Hide the body before it exists; navigation.js reveals it once the saved
+    // scroll position is in place. The timeout is only a safety net for the
+    // case where that script never runs.
     (function () {
+      // Hover previews render pages in hidden iframes; those need no fade.
+      if (window.self !== window.top) {
+        return;
+      }
       if (window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches) {
         return;
       }
       document.documentElement.classList.add('page-transition-init');
       window.setTimeout(function () {
         document.documentElement.classList.remove('page-transition-init');
-      }, 1200);
+      }, 4000);
     })();
   </script>
   <title>about &#8211; Adam O&#039;Deven</title>
@@ -60,12 +67,12 @@ img:is([sizes=auto i],[sizes^="auto," i]){contain-intrinsic-size:3000px 1500px}
 /*# sourceURL=global-styles-inline-css */
 </style>
 
-<link rel='stylesheet' id='adam-style-css' href='wp-content/themes/adam/style.css%3Fver=1788341316.css' media='all' />
+<link rel='stylesheet' id='adam-style-css' href='wp-content/themes/adam/style.css%3Fver=1789135100.css' media='all' />
 <script id="adam-navigation-js-extra">
 var adamNavigation = {"homeUrl":"https://adamodeven.com/","backLabel":"Back"};
 //# sourceURL=adam-navigation-js-extra
 </script>
-<script id="adam-navigation-js" src="wp-content/themes/adam/assets/js/navigation.js%3Fver=1788854367"></script>
+<script id="adam-navigation-js" src="wp-content/themes/adam/assets/js/navigation.js%3Fver=1789135100"></script>
 
 <!-- Google tag (gtag.js) snippet added by Site Kit -->
 <!-- Google Analytics snippet added by Site Kit -->
@@ -200,7 +207,7 @@ gtag("config", "GT-MQDTTQPD", {"googlesitekit_post_type":"page"});
 
 
 
-<p class="has-medium-font-size wp-block-paragraph">I’m most interested in projects where design decisions are shaped by the physical constraints of mechanisms, materials, electronics, and assembly. Recent work includes <a href="index.html%3Fp=1576.html" data-type="post" data-id="1576">vehicle safety systems</a>, <a href="https://rearlab.gatech.edu/">assistive medical devices</a>, and <a href="index.html%3Fp=1244.html" data-type="post" data-id="1244">mechanical testing systems</a>.</p>
+<p class="has-medium-font-size wp-block-paragraph">I’m most interested in projects where design decisions are shaped by the physical constraints of mechanisms, materials, electronics, and assembly. Recent work includes <a href="https://www.scoutmotors.com/">vehicle safety systems</a>, <a href="https://rearlab.gatech.edu/">assistive medical devices</a>, and <a href="index.html%3Fp=1244.html" data-type="post" data-id="1244">mechanical testing systems</a>.</p>
 
 
 
@@ -229,11 +236,11 @@ gtag("config", "GT-MQDTTQPD", {"googlesitekit_post_type":"page"});
 {"prefetch":[{"source":"document","where":{"and":[{"href_matches":"/*"},{"not":{"href_matches":["/wp-*.php","/wp-admin/*","/wp-content/uploads/*","/wp-content/*","/wp-content/plugins/*","/wp-content/themes/adam/*","/*\\?(.+)"]}},{"not":{"selector_matches":"a[rel~=\"nofollow\"]"}},{"not":{"selector_matches":".no-prefetch, .no-prefetch a"}}]},"eagerness":"conservative"}]}
 </script>
 <script id="adam-main-js-extra">
-var adamTheme = {"themeUrl":"https://adamodeven.com/wp-content/themes/adam","ajaxUrl":"https://adamodeven.com/wp-admin/admin-ajax.php","previewNonce":"52685260b6"};
+var adamTheme = {"themeUrl":"https://adamodeven.com/wp-content/themes/adam","ajaxUrl":"https://adamodeven.com/wp-admin/admin-ajax.php","previewNonce":"a191dea841"};
 //# sourceURL=adam-main-js-extra
 </script>
-<script id="adam-main-js" src="wp-content/themes/adam/assets/js/main.js%3Fver=1789089368"></script>
-<script id="adam-cursor-js" src="wp-content/themes/adam/assets/js/cursor.js%3Fver=1787195783"></script>
+<script data-wp-strategy="defer" defer id="adam-main-js" src="wp-content/themes/adam/assets/js/main.js%3Fver=1789133807"></script>
+<script data-wp-strategy="defer" defer id="adam-cursor-js" src="wp-content/themes/adam/assets/js/cursor.js%3Fver=1789132565"></script>
 <script id="googlesitekit-events-provider-content-events-js-before">
 window._googlesitekit = window._googlesitekit || {};
 window._googlesitekit.contentEvents = {"postID":620,"isSinglePost":false,"hasVimeoEmbed":false};
@@ -252,4 +259,4 @@ var e="script#wp-emoji-settings",t=document.querySelector(e);if(!(t instanceof H
 </html>
 
 
-<!-- Page supported by LiteSpeed Cache 7.9.1 on 2026-09-10 22:00:05 -->
+<!-- Page supported by LiteSpeed Cache 7.9.1 on 2026-09-11 22:00:08 -->
