@@ -285,10 +285,6 @@ html.page-transition-in body {
   justify-content: flex-start;
 }
 
-body.single main {
-  padding-top: calc(32px + 64px);
-}
-
 .header-menu {
   display: flex;
   align-items: center;
