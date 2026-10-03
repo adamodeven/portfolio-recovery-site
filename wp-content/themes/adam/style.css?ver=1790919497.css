@@ -97,6 +97,8 @@ html.custom-cursor-active * {
   z-index: 9999;
   opacity: 0;
   transition: opacity 120ms ease;
+  /* Same trick as the project header: white + difference inverts the backdrop. */
+  mix-blend-mode: difference;
 }
 
 .cursor--visible {
@@ -113,8 +115,8 @@ html.custom-cursor-active * {
     calc(var(--cursor-size, 12px) / -2);
   box-sizing: border-box;
   border-radius: 50%;
-  background: var(--color-text);
-  border: 1.5px solid var(--color-text);
+  background: #fff;
+  border: 1.5px solid #fff;
   transition: width 130ms cubic-bezier(0.16, 1, 0.3, 1),
     height 130ms cubic-bezier(0.16, 1, 0.3, 1),
     margin 130ms cubic-bezier(0.16, 1, 0.3, 1),
@@ -132,7 +134,7 @@ html.custom-cursor-active * {
   height: 36px;
   margin: -18px 0 0 -18px;
   background: transparent;
-  border-color: var(--color-text);
+  border-color: #fff;
 }
 
 .cursor--text .cursor__inner {
@@ -140,7 +142,7 @@ html.custom-cursor-active * {
   height: 20px;
   margin: -10px 0 0 -1px;
   border-radius: 1px;
-  background: var(--color-text);
+  background: #fff;
   border-color: transparent;
 }
 
@@ -274,6 +276,9 @@ html.page-transition-in body {
   background: transparent;
   z-index: 1100;
   box-shadow: none;
+  /* White + difference inverts whatever is behind the text. */
+  color: #fff;
+  mix-blend-mode: difference;
 }
 
 .site-header--single .container {
